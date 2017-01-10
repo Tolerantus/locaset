@@ -16,6 +16,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 import ru.inventions.tolerantus.locaset.R;
@@ -26,11 +28,12 @@ import ru.inventions.tolerantus.locaset.db.Dao;
  */
 
 public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
-        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
     private Dao dao;
     private GoogleApiClient googleApiClient;
-    private Location lastKnownLocation;
+    private static Location lastKnownLocation;
+    private LocationRequest mLocationRequest;
     private Context context;
 
     @Override
@@ -50,7 +53,7 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
                         == PackageManager.PERMISSION_GRANTED) {
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
-
+            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
         }
     }
 
@@ -74,6 +77,10 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
                     .addOnConnectionFailedListener(this)
                     .build();
         }
+        mLocationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setInterval(10 * 1000)        // 10 seconds, in milliseconds
+                .setFastestInterval(1 * 1000);
     }
 
     @Override
@@ -89,6 +96,8 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
                     Location savedLocation = new Location("");
                     savedLocation.setLatitude(latitude);
                     savedLocation.setLongitude(longitude);
+                    savedLocation.setAltitude(0);
+                    savedLocation.setAccuracy(20);
 
                     float distance = lastKnownLocation.distanceTo(savedLocation);
                     if (distance < context.getResources().getInteger(R.integer.location_radius_in_meters)) {
@@ -110,5 +119,10 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
     protected void onPostExecute(Void aVoid) {
         super.onPostExecute(aVoid);
         googleApiClient.disconnect();
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.d("GpsLookupTask", location.toString());
     }
 }
