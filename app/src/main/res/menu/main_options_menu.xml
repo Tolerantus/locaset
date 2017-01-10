@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:title="@string/stop_service" android:id="@+id/menu_options_item_stop_service"
+        app:showAsAction="ifRoom"
+        android:icon="@mipmap/ic_launcher" />
+</menu>

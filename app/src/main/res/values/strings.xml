@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Locaset</string>
+    <string name="db_name">locaset</string>
+    <string name="location_table">TaLocation</string>
+    <string name="location_name_column">name</string>
+    <string name="volume_column">volume</string>
+    <string name="longitude_column">longitude</string>
+    <string name="latitude_column">latitude</string>
+    <string name="customize_context_item">Customize</string>
+    <string name="delete_location_context_item">Delete location</string>
+    <string name="stop_service">Stop search service</string>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--<integer name="google_play_services_version">-->
+        <!--38-->
+    <!--</integer>-->
+    <integer name="db_version">
+        1
+    </integer>
+    <integer name="location_radius_in_meters">
+        100
+    </integer>
+</resources>
