@@ -44,6 +44,8 @@ public class DBHelper extends SQLiteOpenHelper {
                 + context.getString(R.string.longitude_column)
                 + " real, "
                 + context.getString(R.string.latitude_column)
+                + " real, "
+                + context.getString(R.string.altitude_column)
                 + " real)");
         ContentValues cv = new ContentValues();
         cv.put(context.getString(R.string.location_name_column), "test_location");

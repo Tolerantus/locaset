@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         registerForContextMenu(lv);
         findViewById(R.id.bt_add).setOnClickListener(this);
         ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION,},
+                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 1);
     }
 
@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("NewLocation", 0, 0, 50);
+        long id = dao.createLocation("NewLocation", 0, 0, 0, 50);
         if (id != -1) {
             startCustomizingLocation(id);
         }

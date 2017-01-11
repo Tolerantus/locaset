@@ -33,7 +33,7 @@
         <service android:name=".service.MyGPSService"/>
         <meta-data
             android:name="com.google.android.maps.v2.API_KEY"
-            android:value="AIzaSyBgnhHnbBafSLjEEOg8okJ_1CC7Hs9QWxc">
+            android:value="AIzaSyDhwWQKkan0fl4WZ3-9AOJlX2gO0Zo98S4">
         </meta-data>
         <meta-data
             android:name="com.google.android.gms.version"

@@ -3,9 +3,11 @@ package ru.inventions.tolerantus.locaset;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.net.http.RequestQueue;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.SeekBar;
@@ -22,6 +24,18 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.util.Validator;
@@ -55,9 +69,40 @@ public class SettingsActivity extends AppCompatActivity  implements View.OnClick
         String locationName = ((EditText) findViewById(R.id.et_location_name)).getText().toString();
         int volume = ((SeekBar) findViewById(R.id.sb_volume)).getProgress();
         if (validator.validateLocationName(locationName)) {
-            dao.updateLocation(id, locationName, marker.getPosition().latitude, marker.getPosition().longitude, volume);
+            dao.updateLocation(id, locationName, marker.getPosition().latitude, marker.getPosition().longitude, getAltitude(), volume);
             Toast.makeText(this, "Location was successfully saved", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private double getAltitude() {
+        double result = 0d;
+        HttpClient httpClient = new DefaultHttpClient();
+        HttpContext localContext = new BasicHttpContext();
+        String url = "https://maps.googleapis.com/maps/api/elevation/json?locations=" + marker.getPosition().latitude + "," + marker.getPosition().longitude + "&key=" + getString(R.string.API_key);
+        HttpGet httpGet = new HttpGet(url);
+        try {
+            HttpResponse response = httpClient.execute(httpGet, localContext);
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                InputStream instream = entity.getContent();
+                int r = -1;
+                StringBuffer respStr = new StringBuffer();
+                while ((r = instream.read()) != -1)
+                    respStr.append((char) r);
+                String tagOpen = "<double>";
+                String tagClose = "</double>";
+                if (respStr.indexOf(tagOpen) != -1) {
+                    int start = respStr.indexOf(tagOpen) + tagOpen.length();
+                    int end = respStr.indexOf(tagClose);
+                    String value = respStr.substring(start, end);
+                    result = Double.parseDouble(value);
+                }
+                instream.close();
+            }
+        } catch (Exception e) {
+            Log.e("SettingsActivity", "some http error", e);
+        }
+        return result;
     }
 
     @Override

@@ -9,4 +9,6 @@
     <string name="customize_context_item">Customize</string>
     <string name="delete_location_context_item">Delete location</string>
     <string name="stop_service">Stop search service</string>
+    <string name="altitude_column">altitude</string>
+    <string name="API_key">AIzaSyDhwWQKkan0fl4WZ3-9AOJlX2gO0Zo98S4</string>
 </resources>
