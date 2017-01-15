@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("NewLocation", 0, 0, 0, 50);
+        long id = dao.createLocation("NewLocation", 60, 30, 0, 50);
         if (id != -1) {
             startCustomizingLocation(id);
         }

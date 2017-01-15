@@ -4,15 +4,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Logger;
-
 
 /**
  * Created by Aleksandr on 07.01.2017.
@@ -22,7 +16,7 @@ public class MyGPSService extends Service {
     private String t = "Locaset";
     private static boolean isOnline;
     private GoogleApiClient googleApiClient;
-    ExecutorService executorService;
+    private GpsLookupTask task;
 
     @Override
     public void onCreate() {
@@ -31,33 +25,14 @@ public class MyGPSService extends Service {
                     .addApi(LocationServices.API)
                     .build();
         }
-        executorService = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         switchOnService();
         Log.d(t, "starting MyGPSService");
-
-        Runnable task = new Runnable() {
-            @Override
-            public void run() {
-                do {
-                    try {
-                        Log.d(t, "creating GpsLookupTask");
-                        GpsLookupTask task = new GpsLookupTask(MyGPSService.this);
-                        task.execute();
-                        Thread.sleep(60 * 1_000);
-                    } catch (InterruptedException e) {
-                        Log.d(t, "Thread of MyGPSService has been interrupted!");
-                        Thread.currentThread().interrupt();
-                    }
-                } while (isOnline);
-            }
-        };
-        executorService.submit(task);
-        Log.d(t, "MyGPSService finished work");
-
+        task = new GpsLookupTask(MyGPSService.this);
+        task.execute();
         // If we get killed, after returning from here, restart
         return START_NOT_STICKY;
     }
@@ -71,8 +46,9 @@ public class MyGPSService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.d(t, "stopping MyGPSService");
         shutdownService();
-        Toast.makeText(this, "service done", Toast.LENGTH_SHORT).show();
+        task.cancel(false);
     }
 
     public static boolean isServiceOnline() {

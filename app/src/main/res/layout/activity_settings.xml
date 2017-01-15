@@ -17,6 +17,14 @@
             android:id="@+id/et_location_name"
             android:layout_weight="1" />
 
+        <ProgressBar
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/pb_saving"
+            android:layout_weight="1"
+            android:visibility="invisible"/>
+
         <Button
             android:text="Save"
             android:layout_width="wrap_content"
@@ -49,11 +57,12 @@
                 android:id="@+id/sb_volume" />
         </LinearLayout>
 
-        <LinearLayout
+        <FrameLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
            >
+
             <fragment
                 android:id="@+id/map"
                 android:name="com.google.android.gms.maps.SupportMapFragment"
@@ -61,7 +70,8 @@
                 android:layout_height="match_parent">
             </fragment>
 
-        </LinearLayout>
+        </FrameLayout>
+
     </LinearLayout>
 
 </LinearLayout>

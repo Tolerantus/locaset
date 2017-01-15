@@ -32,7 +32,7 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
 
     private Dao dao;
     private GoogleApiClient googleApiClient;
-    private static Location lastKnownLocation;
+    private Location lastKnownLocation;
     private LocationRequest mLocationRequest;
     private Context context;
 
@@ -45,15 +45,22 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         // Here, thisActivity is the current activity
+        Log.d(this.getClass().getSimpleName(), "Google connected");
+        updateLastKnownLocation();
+    }
+
+    private void updateLastKnownLocation() {
         if (ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_COARSE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(context,
                         Manifest.permission.ACCESS_FINE_LOCATION)
                         == PackageManager.PERMISSION_GRANTED) {
+            Log.d(this.getClass().getSimpleName(), "updateLastKnownLocation invocation");
+            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
-            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
+            Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
         }
     }
 
@@ -68,6 +75,7 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
     }
 
     public GpsLookupTask(Context context) {
+        Log.d(this.getClass().getSimpleName(), "creating GpsLookupTask");
         this.context = context;
         this.dao = new Dao(context);
         if (googleApiClient == null) {
@@ -85,44 +93,72 @@ public class GpsLookupTask extends AsyncTask<Void, Float, Void> implements
 
     @Override
     protected Void doInBackground(Void... voids) {
-        if (lastKnownLocation != null && dao != null) {
-            Log.d("GpsLookupTask", "checking locations");
-            Cursor allSavedLocations = dao.getAllLocations();
-            if (allSavedLocations.moveToFirst()) {
-                do {
-                    double latitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.latitude_column)));
-                    double longitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.longitude_column)));
+        Log.d(this.getClass().getSimpleName(), "starting background job");
+        while (!isCancelled()) {
+            Log.d(this.getClass().getSimpleName(), "Repeating background job execution");
+            if (lastKnownLocation != null && dao != null) {
+                Cursor allSavedLocations = dao.getAllLocations();
+                if (allSavedLocations.moveToFirst()) {
+                    do {
+                        double latitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.latitude_column)));
+                        double longitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.longitude_column)));
 
-                    Location savedLocation = new Location("");
-                    savedLocation.setLatitude(latitude);
-                    savedLocation.setLongitude(longitude);
-                    savedLocation.setAltitude(0);
-                    savedLocation.setAccuracy(20);
+                        Location savedLocation = new Location("");
+                        savedLocation.setLatitude(latitude);
+                        savedLocation.setLongitude(longitude);
+                        savedLocation.setAltitude(0);
 
-                    float distance = lastKnownLocation.distanceTo(savedLocation);
-                    if (distance < context.getResources().getInteger(R.integer.location_radius_in_meters)) {
-                        publishProgress(distance);
-                    }
-                } while (allSavedLocations.moveToNext());
+                        float distance = lastKnownLocation.distanceTo(savedLocation);
+                        Log.d(this.getClass().getSimpleName(), "computed distance = " + distance);
+                        if (distance < context.getResources().getInteger(R.integer.location_radius_in_meters)) {
+                            publishProgress(distance);
+                        }
+                    } while (allSavedLocations.moveToNext());
+                }
             }
+            try {
+                Log.d(this.getClass().getSimpleName(), "going to sleep for 60 sec");
+                Thread.sleep(60 * 1_000);
+            } catch (InterruptedException e) {
+                Log.e(this.getClass().getSimpleName(), "Caught InterruptedException during doInBackground method", e);
+            }
+            Log.d(this.getClass().getSimpleName(), "waking up");
         }
+        Log.d(this.getClass().getSimpleName(), this.getClass().getSimpleName() + " was cancelled");
         return null;
     }
 
     @Override
     protected void onProgressUpdate(Float... values) {
-        Toast.makeText(context, "Found nearest location!!! Distance = " + values[0], Toast.LENGTH_SHORT).show();
+        Log.d(this.getClass().getSimpleName(), "***********************************");
+        Log.d(this.getClass().getSimpleName(), "Found nearest location!!! Distance = " + values[0]);
+        Log.d(this.getClass().getSimpleName(), "***********************************");
         super.onProgressUpdate(values);
     }
 
     @Override
     protected void onPostExecute(Void aVoid) {
+        Log.d(this.getClass().getSimpleName(), "Stopping GpsLookupTask execution, disconnecting Google");
         super.onPostExecute(aVoid);
         googleApiClient.disconnect();
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d("GpsLookupTask", location.toString());
+        Log.d(this.getClass().getSimpleName(), "onLocationChanged invocation");
+        if (ContextCompat.checkSelfPermission(context,
+                        Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED) {
+            lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
+                    googleApiClient);
+            Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+        }
+    }
+
+    @Override
+    protected void onCancelled() {
+        super.onCancelled();
+        Log.d(this.getClass().getSimpleName(), "Cancelling task, disconnecting Google");
+        googleApiClient.disconnect();
     }
 }

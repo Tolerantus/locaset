@@ -5,7 +5,7 @@ android {
         config {
             keyAlias 'locaset'
             keyPassword 'locaset'
-            storeFile file('C:\\Users\\aklement\\AndroidStudioProjects\\locaset\\mykeystore.keystore')
+            storeFile file('..\\mykeystore.keystore')
             storePassword 'android1'
         }
     }
