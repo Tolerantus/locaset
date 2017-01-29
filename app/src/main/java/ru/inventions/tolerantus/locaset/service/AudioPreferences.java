@@ -6,14 +6,25 @@ package ru.inventions.tolerantus.locaset.service;
 
 public class AudioPreferences {
 
-    private int volume;
+    private long preferenceId;
+    private double volume;
     private boolean vibro;
 
-    public int getVolume() {
+
+
+    public long getPreferenceId() {
+        return preferenceId;
+    }
+
+    public void setPreferenceId(long preferenceId) {
+        this.preferenceId = preferenceId;
+    }
+
+    public double getVolume() {
         return volume;
     }
 
-    public void setVolume(int volume) {
+    public void setVolume(double volume) {
         this.volume = volume;
     }
 
@@ -23,5 +34,14 @@ public class AudioPreferences {
 
     public void setVibro(boolean vibro) {
         this.vibro = vibro;
+    }
+
+    @Override
+    public String toString() {
+        return "AudioPreferences{" +
+                "preferenceId=" + preferenceId +
+                ", volume=" + volume +
+                ", vibro=" + vibro +
+                '}';
     }
 }

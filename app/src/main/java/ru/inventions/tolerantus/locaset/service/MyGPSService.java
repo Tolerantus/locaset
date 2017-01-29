@@ -8,6 +8,8 @@ import android.util.Log;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 
+import ru.inventions.tolerantus.locaset.util.MyCachedThreadPoolProvider;
+
 /**
  * Created by Aleksandr on 07.01.2017.
  */
@@ -29,10 +31,12 @@ public class MyGPSService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        switchOnService();
-        Log.d(t, "starting MyGPSService");
-        task = new GpsLookupTask(MyGPSService.this);
-        task.execute();
+        if (!isOnline) {
+            switchOnService();
+            Log.d(t, "starting MyGPSService");
+            task = new GpsLookupTask(MyGPSService.this);
+            task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+        }
         // If we get killed, after returning from here, restart
         return START_NOT_STICKY;
     }
@@ -48,7 +52,9 @@ public class MyGPSService extends Service {
     public void onDestroy() {
         Log.d(t, "stopping MyGPSService");
         shutdownService();
-        task.cancel(false);
+        if (task != null) {
+            task.cancel(false);
+        }
     }
 
     public static boolean isServiceOnline() {

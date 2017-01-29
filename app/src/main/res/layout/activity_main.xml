@@ -9,7 +9,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="ru.inventions.tolerantus.locaset.MainActivity">
+    tools:context="ru.inventions.tolerantus.locaset.activity.MainActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,7 +18,8 @@
         <ListView
             android:id="@+id/lvMain"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:theme="@style/Base.TextAppearance.AppCompat.Body1" />
     </LinearLayout>
 
     <RelativeLayout android:gravity="bottom"
@@ -33,6 +34,7 @@
             android:layout_alignParentBottom="true"
             android:layout_alignParentEnd="true"
             android:text="+"
+            android:textSize="50px"
             style="@style/Widget.AppCompat.Button.Colored" />
 
     </RelativeLayout>

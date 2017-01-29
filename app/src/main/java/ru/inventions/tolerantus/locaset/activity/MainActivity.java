@@ -1,6 +1,5 @@
-package ru.inventions.tolerantus.locaset;
+package ru.inventions.tolerantus.locaset.activity;
 
-import android.*;
 import android.Manifest;
 import android.content.Intent;
 import android.support.v4.app.ActivityCompat;
@@ -11,11 +10,12 @@ import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 
+import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.util.LocationCursorAdapter;
@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         registerForContextMenu(lv);
         findViewById(R.id.bt_add).setOnClickListener(this);
         ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 1);
     }
 
@@ -59,9 +59,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (item.getItemId()) {
             case R.id.menu_options_item_stop_service :
                 if (!MyGPSService.isServiceOnline()) {
+                    Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
                     startService(new Intent(this, MyGPSService.class));
+                    item.setIcon(android.R.drawable.ic_media_pause);
                 }else {
+                    Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
                     stopService(new Intent(this, MyGPSService.class));
+                    item.setIcon(android.R.drawable.ic_media_play);
                 }
         }
         return true;
@@ -83,8 +87,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startCustomizingLocation(long id) {
-        Intent settingsIntent = new Intent(this, SettingsActivity.class);
-        settingsIntent.putExtra(getString(R.string.location_name_column), id);
+        Intent settingsIntent = new Intent(this, MapActivity.class);
+        settingsIntent.putExtra(getString(R.string.location_id), id);
         startActivity(settingsIntent);
     }
 
@@ -112,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("NewLocation", 60, 30, 0, 50);
+        long id = dao.createLocation("NewLocation", 60, 30, 0, 0.5);
         if (id != -1) {
             startCustomizingLocation(id);
         }

@@ -35,23 +35,31 @@ public class Dao {
         return db.query(context.getString(R.string.location_table), null, "_id = " + id, null, null, null, null);
     }
 
-    public void updateLocation(long id, String locationName, double latitude, double longitude, double altitude, int volume) {
+    public void updateLocation(long id, String locationName, double latitude, double longitude, double altitude, double volume) {
         ContentValues cv = new ContentValues();
         cv.put(context.getString(R.string.location_name_column), locationName);
         cv.put(context.getString(R.string.latitude_column), latitude);
         cv.put(context.getString(R.string.longitude_column), longitude);
         cv.put(context.getString(R.string.altitude_column), altitude);
-        cv.put(context.getString(R.string.volume_column), volume);
+        cv.put(context.getString(R.string.ringtone_volume_column), volume);
         db.update(context.getString(R.string.location_table), cv, "_id = " + id, null);
     }
 
-    public long createLocation(String locationName, double latitude, double longitude, double altitude, int volume) {
+    public void updateLocation(long id, double latitude, double longitude, double altitude) {
+        ContentValues cv = new ContentValues();
+        cv.put(context.getString(R.string.latitude_column), latitude);
+        cv.put(context.getString(R.string.longitude_column), longitude);
+        cv.put(context.getString(R.string.altitude_column), altitude);
+        db.update(context.getString(R.string.location_table), cv, "_id = " + id, null);
+    }
+
+    public long createLocation(String locationName, double latitude, double longitude, double altitude, double volume) {
         ContentValues cv = new ContentValues();
         cv.put(context.getString(R.string.location_name_column), locationName);
         cv.put(context.getString(R.string.latitude_column), latitude);
         cv.put(context.getString(R.string.longitude_column), longitude);
         cv.put(context.getString(R.string.altitude_column), altitude);
-        cv.put(context.getString(R.string.volume_column), volume);
+        cv.put(context.getString(R.string.ringtone_volume_column), volume);
         return db.insert(context.getString(R.string.location_table), null, cv);
     }
 

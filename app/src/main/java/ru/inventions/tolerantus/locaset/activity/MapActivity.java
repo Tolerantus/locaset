@@ -1,19 +1,18 @@
-package ru.inventions.tolerantus.locaset;
+package ru.inventions.tolerantus.locaset.activity;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.location.Location;
-import android.net.http.RequestQueue;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.SeekBar;
-import android.widget.Toast;
 
 
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -23,7 +22,6 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
@@ -31,31 +29,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.HttpContext;
+import java.util.concurrent.Executors;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.concurrent.ExecutionException;
-
+import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.service.AltitudeReceivingTask;
+import ru.inventions.tolerantus.locaset.service.LocationPreferencesSavingTask;
+import ru.inventions.tolerantus.locaset.util.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.util.Validator;
 
 /**
  * Created by Aleksandr on 06.01.2017.
  */
 
-public class SettingsActivity extends AppCompatActivity implements View.OnClickListener, OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener {
+public class MapActivity extends AppCompatActivity implements View.OnClickListener, OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener {
     private SupportMapFragment mapFragment;
     private GoogleMap map;
     private Dao dao;
@@ -66,40 +52,52 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
     private GoogleApiClient googleApiClient;
     private Location lastKnownLocation;
     private LocationRequest mLocationRequest;
+    private String locationName;
+    private Long locationId;
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.save:
-                saveLocation();
+
         }
     }
 
-    private void saveLocation() {
-        long id = getIntent().getLongExtra(getString(R.string.location_name_column), -1);
-        if (id == -1) {
+    private LocationPreferencesSavingTask saveLocation() {
+        LocationPreferencesSavingTask task = null;
+        locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
+        if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
         }
-        String locationName = ((EditText) findViewById(R.id.et_location_name)).getText().toString();
-        int volume = ((SeekBar) findViewById(R.id.sb_volume)).getProgress();
-        if (validator.validateLocationName(locationName)) {
-            AltitudeReceivingTask task = new AltitudeReceivingTask(this, dao, id, locationName, marker.getPosition().latitude, marker.getPosition().longitude, volume);
-            task.execute();
-        }
+        task = new LocationPreferencesSavingTask(this, dao, locationId, marker.getPosition().latitude, marker.getPosition().longitude);
+        task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+        return task;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 1, 0, "Details");
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        Intent audioIntent = new Intent(this, DetailedSettingsActivity.class);
+        audioIntent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
+        saveLocation();
+        startActivity(audioIntent);
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_settings);
+        setContentView(R.layout.activity_location_review);
         dao = new Dao(this);
         validator = new Validator();
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        readDataFromDB(getIntent().getLongExtra(getString(R.string.location_name_column), -1));
-        initMapSettings();
+        locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
 
-        findViewById(R.id.save).setOnClickListener(this);
         checkSelfPermission("android.permission.ACCESS_FINE_LOCATION");
         initMyLocationSearcherService();
     }
@@ -120,11 +118,7 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         if (locationId != -1) {
             Cursor c = dao.getLocationById(locationId);
             if (c.moveToFirst()) {
-                String locationName = c.getString(c.getColumnIndex(getString(R.string.location_name_column)));
-                ((EditText) findViewById(R.id.et_location_name)).setText(locationName);
-                int volume = c.getInt(c.getColumnIndex(getString(R.string.volume_column)));
-                ((SeekBar) findViewById(R.id.sb_volume)).setMax(100);
-                ((SeekBar) findViewById(R.id.sb_volume)).setProgress(volume);
+                locationName = c.getString(c.getColumnIndex(getString(R.string.location_name_column)));
                 latitude = c.getFloat(c.getColumnIndex(getString(R.string.latitude_column)));
                 longitude = c.getFloat(c.getColumnIndex(getString(R.string.longitude_column)));
             }
@@ -141,42 +135,53 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
                     == PackageManager.PERMISSION_GRANTED) {
                 map.setMyLocationEnabled(true);
             }
+            map.getUiSettings().setZoomControlsEnabled(true);
             map.setIndoorEnabled(true);
-            moveCamera(latitude, longitude);
-            marker = map.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)));
+            addMarker();
+
             map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                 @Override
                 public void onMapClick(LatLng latLng) {
+                    Log.d(this.getClass().getSimpleName(), "New marker has been created");
                     marker.remove();
                     marker = map.addMarker(new MarkerOptions().position(latLng));
+                    marker.setTitle(locationName);
+                    marker.showInfoWindow();
                 }
             });
             map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
                 @Override
                 public boolean onMyLocationButtonClick() {
-                    if (lastKnownLocation == null) {
-                        updateLastKnownLocation();
+                    Log.d(this.getClass().getSimpleName(), "My location button has been pressed");
+                    if (lastKnownLocation != null) {
+                        moveCamera(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
                     }
-                    moveCamera(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-                    Toast.makeText(SettingsActivity.this, "You somewhere here", Toast.LENGTH_SHORT).show();
                     return true;
                 }
             });
-            map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            map.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
                 @Override
-                public boolean onMarkerClick(Marker marker) {
-                    moveCamera(marker.getPosition().latitude, marker.getPosition().longitude);
-                    return true;
+                public void onMapLongClick(LatLng latLng) {
+                    moveCamera(latLng.latitude, latLng.longitude);
                 }
             });
         }
+    }
+
+    private void addMarker() {
+        moveCamera(latitude, longitude);
+        if (marker != null) {
+            marker.remove();
+        }
+        marker = map.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)));
+        marker.setTitle(locationName);
+        marker.showInfoWindow();
     }
 
     private void moveCamera(double latitude, double longitude) {
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(new LatLng(latitude, longitude))
                 .zoom(15)
-                .bearing(45)
                 .tilt(20)
                 .build();
         CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(cameraPosition);
@@ -201,7 +206,11 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
             LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
-            Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+            if (lastKnownLocation != null) {
+                Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+            } else {
+                Log.d(this.getClass().getSimpleName(), "Last known location hasn't been initialized yet");
+            }
         }
     }
 
@@ -218,13 +227,35 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
             Log.d(this.getClass().getSimpleName(), "Location changed, applying changes");
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
-            Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+            if (lastKnownLocation != null) {
+                Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+            } else {
+                Log.d(this.getClass().getSimpleName(), "Last known location hasn't been initialized yet");
+            }
         }
     }
 
     @Override
     protected void onDestroy() {
-        googleApiClient.connect();
+        saveLocation();
+        googleApiClient.disconnect();
         super.onDestroy();
+    }
+
+    /**
+     * Dispatch onResume() to fragments.  Note that for better inter-operation
+     * with older versions of the platform, at the point of this call the
+     * fragments attached to the activity are <em>not</em> resumed.  This means
+     * that in some cases the previous state may still be saved, not allowing
+     * fragment transactions that modify the state.  To correctly interact
+     * with fragments in their proper state, you should instead override
+     * {@link #onResumeFragments()}.
+     */
+    @Override
+    protected void onResume() {
+        readDataFromDB(locationId);
+        Log.d(this.getClass().getSimpleName(), locationName);
+        initMapSettings();
+        super.onResume();
     }
 }
