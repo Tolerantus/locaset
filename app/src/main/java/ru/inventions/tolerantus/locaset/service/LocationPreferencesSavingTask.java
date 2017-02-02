@@ -1,11 +1,9 @@
 package ru.inventions.tolerantus.locaset.service;
 
 import android.app.Activity;
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.AsyncTask;
-import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.View;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -33,15 +31,16 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
     private long locationId;
     private double latitude;
     private double longitude;
-    private double altitude;
-    private Activity activity;
+    private Activity activityInvoker;
+    private Intent afterSavingIntent;
 
-    public LocationPreferencesSavingTask(Activity activity, Dao dao, long locationId, double latitude, double longitude) {
-        this.activity = activity;
+    public LocationPreferencesSavingTask(Activity activityInvoker, Dao dao, long locationId, double latitude, double longitude, Intent afterSavingIntent) {
+        this.activityInvoker = activityInvoker;
         this.dao = dao;
         this.locationId = locationId;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.afterSavingIntent = afterSavingIntent;
     }
 
     @Override
@@ -51,7 +50,7 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
 
     @Override
     protected Void doInBackground(Void... doubles) {
-        RequestQueue queue = Volley.newRequestQueue(activity);
+        RequestQueue queue = Volley.newRequestQueue(activityInvoker);
         String url = "http://maps.googleapis.com/maps/api/elevation/" + "xml?locations="
                 + latitude + "," + longitude + "&sensor=true";
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -80,7 +79,7 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
             while (xpp.getEventType() != XmlPullParser.END_DOCUMENT) {
                 switch (xpp.getEventType()) {
                     case XmlPullParser.START_TAG:
-                        if (xpp.getName().equals(activity.getString(R.string.elavation_tag))) {
+                        if (xpp.getName().equals(activityInvoker.getString(R.string.elavation_tag))) {
                             elevation = Double.parseDouble(xpp.nextText());
                         }
                         break;
@@ -107,8 +106,10 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
     @Override
     protected void onProgressUpdate(Double... values) {
         super.onProgressUpdate(values);
-        altitude = values[0];
-        dao.updateLocation(locationId, latitude, longitude, altitude);
+        dao.updateLocation(locationId, latitude, longitude, values[0]);
+        if (afterSavingIntent != null) {
+            activityInvoker.startActivity(afterSavingIntent);
+        }
     }
 
     @Override

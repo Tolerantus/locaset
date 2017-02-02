@@ -51,6 +51,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_options_menu, menu);
+        if (MyGPSService.isServiceOnline()) {
+            menu.getItem(0).setIcon(android.R.drawable.ic_media_pause);
+        } else {
+            menu.getItem(0).setIcon(android.R.drawable.ic_media_play);
+        }
         return true;
     }
 

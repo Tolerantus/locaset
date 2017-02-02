@@ -62,13 +62,13 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         }
     }
 
-    private LocationPreferencesSavingTask saveLocation() {
+    private LocationPreferencesSavingTask saveLocation(Intent afterSavingIntent) {
         LocationPreferencesSavingTask task = null;
         locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
         if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
         }
-        task = new LocationPreferencesSavingTask(this, dao, locationId, marker.getPosition().latitude, marker.getPosition().longitude);
+        task = new LocationPreferencesSavingTask(this, dao, locationId, marker.getPosition().latitude, marker.getPosition().longitude, afterSavingIntent);
         task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
         return task;
     }
@@ -81,10 +81,14 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        Intent audioIntent = new Intent(this, DetailedSettingsActivity.class);
-        audioIntent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
-        saveLocation();
-        startActivity(audioIntent);
+        switch (item.getItemId()) {
+            case 1:
+                Intent audioIntent = new Intent(this, DetailedSettingsActivity.class);
+                audioIntent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
+                saveLocation(audioIntent);
+                break;
+        }
+
         return super.onOptionsItemSelected(item);
     }
 
@@ -237,7 +241,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     protected void onDestroy() {
-        saveLocation();
+        Intent nowhere = null;
+        saveLocation(nowhere);
         googleApiClient.disconnect();
         super.onDestroy();
     }
