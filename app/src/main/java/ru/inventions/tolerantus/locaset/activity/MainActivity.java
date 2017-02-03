@@ -15,12 +15,16 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.util.LocationCursorAdapter;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private ListView lv;
     private Dao dao;
@@ -62,12 +66,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.menu_options_item_stop_service :
+            case R.id.menu_options_item_stop_service:
                 if (!MyGPSService.isServiceOnline()) {
                     Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
                     startService(new Intent(this, MyGPSService.class));
                     item.setIcon(android.R.drawable.ic_media_pause);
-                }else {
+                } else {
                     Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
                     stopService(new Intent(this, MyGPSService.class));
                     item.setIcon(android.R.drawable.ic_media_play);
@@ -80,11 +84,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onContextItemSelected(MenuItem item) {
         AdapterView.AdapterContextMenuInfo acmi = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
         switch (item.getItemId()) {
-            case R.id.itemDelete :
+            case R.id.itemDelete:
                 dao.deleteLocationById(acmi.id);
                 adapter.changeCursor(dao.getAllLocations());
                 break;
-            case R.id.itemCustomize :
+            case R.id.itemCustomize:
                 startCustomizingLocation(acmi.id);
                 break;
         }
@@ -115,13 +119,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.bt_add :
+            case R.id.bt_add:
                 addNewLocation();
         }
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("NewLocation", 60, 30, 0, 0.5);
+        long id = dao.createLocation("NewLocation" + new SimpleDateFormat("_dd-MM-yyyy_HH:mm:ss", Locale.ENGLISH).format(new Date()), 60, 30, 0);
         if (id != -1) {
             startCustomizingLocation(id);
         }

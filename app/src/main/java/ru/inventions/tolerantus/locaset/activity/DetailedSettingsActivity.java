@@ -10,25 +10,35 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.service.MediaService;
 
 /**
  * Created by Aleksandr on 23.01.2017.
  */
 
-public class DetailedSettingsActivity extends AppCompatActivity{
+public class DetailedSettingsActivity extends AppCompatActivity {
 
     private EditText etLocationName;
     private EditText etLatitude;
     private EditText etLongitude;
     private EditText etAltitude;
+    private EditText etRadius;
 
     private SeekBar sbRingtone;
+    private int ringMax;
+    private SeekBar sbMusic;
+    private int musicMax;
+    private SeekBar sbNotification;
+    private int notifMax;
+    private CheckBox cbVibro;
+
     private int max;
 
     private Long locationId;
@@ -55,11 +65,22 @@ public class DetailedSettingsActivity extends AppCompatActivity{
         etLatitude = ((EditText) findViewById(R.id.et_latitude));
         etLongitude = ((EditText) findViewById(R.id.et_longitude));
         etAltitude = ((EditText) findViewById(R.id.et_altitude));
+        etRadius = ((EditText) findViewById(R.id.et_radius));
 
-        sbRingtone = ((SeekBar) findViewById(R.id.sb_ringtone));
         AudioManager audioManager = ((AudioManager) getSystemService(Context.AUDIO_SERVICE));
+        sbRingtone = ((SeekBar) findViewById(R.id.sb_ringtone));
+        ringMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING);
+        sbNotification = ((SeekBar) findViewById(R.id.sb_notification));
+        notifMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION);
+        sbMusic = ((SeekBar) findViewById(R.id.sb_system));
+        musicMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+
+        cbVibro = (CheckBox) findViewById(R.id.cb_vibration);
+
         max = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING);
-        sbRingtone.setMax(max);
+        sbRingtone.setMax(ringMax);
+        sbNotification.setMax(notifMax);
+        sbMusic.setMax(musicMax);
     }
 
     private void initViewsContent() {
@@ -69,17 +90,32 @@ public class DetailedSettingsActivity extends AppCompatActivity{
             etLatitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.latitude_column))));
             etLongitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.longitude_column))));
             etAltitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.altitude_column))));
-            sbRingtone.setProgress(((int) (max * locationData.getFloat(locationData.getColumnIndex(getString(R.string.ringtone_volume_column))))));
+            etRadius.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.radius))));
+
+            AudioManager audioManager = ((AudioManager) getSystemService(Context.AUDIO_SERVICE));
+            sbRingtone.setProgress(((int) (ringMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.ringtone_volume_column))))));
+            sbNotification.setProgress(((int) (notifMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.notification_volume))))));
+            sbMusic.setProgress(((int) (musicMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.music_volume))))));
+
+            cbVibro.setChecked(locationData.getInt(locationData.getColumnIndex(getString(R.string.vibration))) != 0);
         }
     }
 
     private void save() {
         String locationName = etLocationName.getText().toString();
         Double latitude = Double.parseDouble(etLatitude.getText().toString());
+        Double radius = Double.parseDouble(etRadius.getText().toString());
         Double longitude = Double.parseDouble(etLongitude.getText().toString());
         Double altitude = Double.parseDouble(etAltitude.getText().toString());
-        Double ringtoneVolume = sbRingtone.getProgress()*1.0/max;
-        dao.updateLocation(locationId, locationName, latitude, longitude, altitude, ringtoneVolume);
+        Double ringtoneVolume = sbRingtone.getProgress() * 1.0 / ringMax;
+        Double musicVolume = sbMusic.getProgress() * 1.0 / musicMax;
+        Double notificationVolume = sbNotification.getProgress() * 1.0 / notifMax;
+
+        boolean vibro = cbVibro.isChecked();
+        dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro);
+        if (MediaService.currentPreferenceId.get() == locationId) {
+            MediaService.currentPreferenceId.set(-1);
+        }
         Log.d(this.getClass().getSimpleName(), "Saving location");
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }

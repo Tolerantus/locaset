@@ -3,7 +3,7 @@
     <string name="db_name">locaset</string>
     <string name="location_table">TaLocation</string>
     <string name="location_name_column">name</string>
-    <string name="ringtone_volume_column">ringtone_volume</string>
+    <string name="ringtone_volume_column">ringtoneVolume</string>
     <string name="longitude_column">longitude</string>
     <string name="latitude_column">latitude</string>
     <string name="customize_context_item">Customize</string>
@@ -87,4 +87,8 @@
     <string name="pref_title_vibrate">Vibrate</string>
     <string name="title_activity_audio_preferences">Audio Settings</string>
     <string name="location_id">locationId</string>
+    <string name="music_volume">music_volume</string>
+    <string name="notification_volume">notification_volume</string>
+    <string name="vibration">vibration</string>
+    <string name="radius">radius</string>
 </resources>

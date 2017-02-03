@@ -55,6 +55,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     private String locationName;
     private Long locationId;
 
+    private boolean locationChanged;
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -85,7 +87,11 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             case 1:
                 Intent audioIntent = new Intent(this, DetailedSettingsActivity.class);
                 audioIntent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
-                saveLocation(audioIntent);
+                if (locationChanged) {
+                    saveLocation(audioIntent);
+                } else {
+                   startActivity(audioIntent);
+                }
                 break;
         }
 
@@ -151,6 +157,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                     marker = map.addMarker(new MarkerOptions().position(latLng));
                     marker.setTitle(locationName);
                     marker.showInfoWindow();
+                    locationChanged = true;
                 }
             });
             map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
@@ -261,6 +268,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         readDataFromDB(locationId);
         Log.d(this.getClass().getSimpleName(), locationName);
         initMapSettings();
+        locationChanged = false;
         super.onResume();
     }
 }

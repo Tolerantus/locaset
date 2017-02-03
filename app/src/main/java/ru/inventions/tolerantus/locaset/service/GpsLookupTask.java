@@ -18,6 +18,9 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 
@@ -25,7 +28,7 @@ import ru.inventions.tolerantus.locaset.db.Dao;
  * Created by Aleksandr on 09.01.2017.
  */
 
-public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
+public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
     private Dao dao;
@@ -33,6 +36,8 @@ public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
     private Location currentLocation;
     private LocationRequest mLocationRequest;
     private Context context;
+
+    private Map<Long, Float> crossedZones = new HashMap<>();
 
     @Override
     protected void onPreExecute() {
@@ -97,7 +102,7 @@ public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
         }
         mLocationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(10 * 1000)        // 10 seconds, in milliseconds
+                .setInterval(60 * 1000)
                 .setFastestInterval(1 * 1000);
     }
 
@@ -112,19 +117,36 @@ public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
                     do {
                         double latitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.latitude_column)));
                         double longitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.longitude_column)));
-
+                        int radius = allSavedLocations.getInt(allSavedLocations.getColumnIndex(context.getString(R.string.radius)));
+                        double altitude = allSavedLocations.getDouble(allSavedLocations.getColumnIndex(context.getString(R.string.altitude_column)));
+                        Long id = allSavedLocations.getLong(allSavedLocations.getColumnIndex("_id"));
                         Location savedLocation = new Location("");
                         savedLocation.setLatitude(latitude);
                         savedLocation.setLongitude(longitude);
-                        savedLocation.setAltitude(0);
+                        savedLocation.setAltitude(altitude);
 
                         float distance = currentLocation.distanceTo(savedLocation);
                         Log.d(this.getClass().getSimpleName(), "computed distance = " + distance);
-                        if (distance < context.getResources().getInteger(R.integer.location_radius_in_meters)) {
-                            publishProgress(((double) distance), allSavedLocations.getDouble(allSavedLocations.getColumnIndex("_id")));
-                            break;
+                        if (distance < radius) {
+                            crossedZones.put(id, distance);
                         }
                     } while (allSavedLocations.moveToNext());
+
+                    long nearestLocationId = -1;
+                    Float minDistance = null;
+                    for (Long id : crossedZones.keySet()) {
+                        if (minDistance == null) {
+                            minDistance = crossedZones.get(id);
+                            nearestLocationId = id;
+                        } else if (minDistance >= Math.min(minDistance, crossedZones.get(id))){
+                            nearestLocationId = id;
+                            minDistance = Math.min(minDistance, crossedZones.get(id));
+                        }
+                    }
+                    Log.d(this.getClass().getSimpleName(), "*************************************************");
+                    Log.d(this.getClass().getSimpleName(), "Found nearest location with id=" + nearestLocationId+ "!!! Distance = " + minDistance);
+                    Log.d(this.getClass().getSimpleName(), "*************************************************");
+                    publishProgress(nearestLocationId);
                 }
             } else if (currentLocation == null) {
                 rememberLastKnownLocation();
@@ -141,11 +163,9 @@ public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
     }
 
     @Override
-    protected void onProgressUpdate(Double... values) {
-        Log.d(this.getClass().getSimpleName(), "*************************************************");
-        Log.d(this.getClass().getSimpleName(), "Found nearest location!!! Distance = " + values[0]);
-        Log.d(this.getClass().getSimpleName(), "*************************************************");
-        makeAudioServiceCall(((long) values[1].doubleValue()));
+    protected void onProgressUpdate(Long... values) {
+
+        makeAudioServiceCall(values[0]);
         super.onProgressUpdate(values);
     }
 
@@ -155,7 +175,10 @@ public class GpsLookupTask extends AsyncTask<Void, Double, Void> implements
             MediaService ms = MediaService.getInstance();
             AudioPreferences p = new AudioPreferences();
             p.setPreferenceId(c.getLong(c.getColumnIndex("_id")));
-            p.setVolume(c.getFloat(c.getColumnIndex(context.getString(R.string.ringtone_volume_column))));
+            p.setRingtoneVolume(c.getFloat(c.getColumnIndex(context.getString(R.string.ringtone_volume_column))));
+            p.setMusicVolume(c.getFloat(c.getColumnIndex(context.getString(R.string.music_volume))));
+            p.setNotificationVolume(c.getFloat(c.getColumnIndex(context.getString(R.string.notification_volume))));
+            p.setVibro(c.getInt(c.getColumnIndex(context.getString(R.string.vibration))) != 0);
             ms.adjustAudio(p, context);
         }
     }

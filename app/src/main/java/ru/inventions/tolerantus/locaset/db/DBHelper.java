@@ -41,6 +41,14 @@ public class DBHelper extends SQLiteOpenHelper {
                 + " text, "
                 + context.getString(R.string.ringtone_volume_column)
                 + " real, "
+                + context.getString(R.string.music_volume)
+                + " real, "
+                + context.getString(R.string.notification_volume)
+                + " real, "
+                + context.getString(R.string.vibration)
+                + " integer, "
+                + context.getString(R.string.radius)
+                + " integer, "
                 + context.getString(R.string.longitude_column)
                 + " real, "
                 + context.getString(R.string.latitude_column)
@@ -50,8 +58,14 @@ public class DBHelper extends SQLiteOpenHelper {
         ContentValues cv = new ContentValues();
         cv.put(context.getString(R.string.location_name_column), "test_location");
         cv.put(context.getString(R.string.ringtone_volume_column), 0.5);
+        cv.put(context.getString(R.string.notification_volume), 0.5);
+        cv.put(context.getString(R.string.music_volume), 0.5);
+        cv.put(context.getString(R.string.vibration), 1);
+        cv.put(context.getString(R.string.radius), 100);
         cv.put(context.getString(R.string.longitude_column), 30);
         cv.put(context.getString(R.string.latitude_column), 60);
+        cv.put(context.getString(R.string.altitude_column), 10);
+
         sqLiteDatabase.insert(context.getString(R.string.location_table), null, cv);
     }
 
