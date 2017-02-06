@@ -28,10 +28,10 @@ public class MediaService {
                 amanager.setStreamVolume(AudioManager.STREAM_RING, (int) (amanager.getStreamMaxVolume(AudioManager.STREAM_RING) * preferences.getRingtoneVolume()), 0);
                 amanager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (amanager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * preferences.getMusicVolume()), 0);
                 amanager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, (int) (amanager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION) * preferences.getNotificationVolume()), 0);
-                if (preferences.isVibro()) {
-                    amanager.setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
+                if (!preferences.isVibro() && preferences.getRingtoneVolume() == 0){
+                    amanager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
                 } else {
-                    amanager.setRingerMode(AudioManager.VIBRATE_SETTING_OFF);
+                    amanager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
                 }
                 currentPreferenceId.set(preferences.getPreferenceId());
             }

@@ -166,7 +166,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:max="10"
-                        android:progress="3" />
+                        android:progress="3" >
+                        <requestFocus/>
+                    </SeekBar>
                 </LinearLayout>
 
                 <LinearLayout
@@ -216,17 +218,13 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/textView11"
+                    <Switch
+                        android:text="Vibro"
+                        android:layout_marginTop="10dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Vibration"
-                        android:textColor="@color/cast_expanded_controller_background_color" />
+                        android:id="@+id/s_vibration" />
 
-                    <CheckBox
-                        android:id="@+id/cb_vibration"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
                 </LinearLayout>
 
             </LinearLayout>

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -24,7 +25,10 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -48,6 +52,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     private Validator validator;
     private float latitude;
     private float longitude;
+    private int radius;
+    private Circle zone;
     private Marker marker;
     private GoogleApiClient googleApiClient;
     private Location lastKnownLocation;
@@ -90,7 +96,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 if (locationChanged) {
                     saveLocation(audioIntent);
                 } else {
-                   startActivity(audioIntent);
+                    startActivity(audioIntent);
                 }
                 break;
         }
@@ -131,6 +137,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 locationName = c.getString(c.getColumnIndex(getString(R.string.location_name_column)));
                 latitude = c.getFloat(c.getColumnIndex(getString(R.string.latitude_column)));
                 longitude = c.getFloat(c.getColumnIndex(getString(R.string.longitude_column)));
+                radius = c.getInt(c.getColumnIndex(getString(R.string.radius)));
             }
         }
     }
@@ -147,16 +154,14 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             }
             map.getUiSettings().setZoomControlsEnabled(true);
             map.setIndoorEnabled(true);
-            addMarker();
+            addMarker(new LatLng(latitude, longitude));
+            moveCamera(latitude, longitude);
 
             map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                 @Override
                 public void onMapClick(LatLng latLng) {
                     Log.d(this.getClass().getSimpleName(), "New marker has been created");
-                    marker.remove();
-                    marker = map.addMarker(new MarkerOptions().position(latLng));
-                    marker.setTitle(locationName);
-                    marker.showInfoWindow();
+                    addMarker(latLng);
                     locationChanged = true;
                 }
             });
@@ -179,14 +184,22 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         }
     }
 
-    private void addMarker() {
-        moveCamera(latitude, longitude);
+    private void addMarker(LatLng position) {
         if (marker != null) {
             marker.remove();
         }
-        marker = map.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)));
+        if (zone != null) {
+            zone.remove();
+        }
+        marker = map.addMarker(new MarkerOptions().position(position).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
         marker.setTitle(locationName);
         marker.showInfoWindow();
+        CircleOptions circleOptions = new CircleOptions()
+                .center(new LatLng(position.latitude, position.longitude)).radius(radius)
+                .strokeColor(Color.RED)
+                .strokeWidth(2);
+
+        zone =  map.addCircle(circleOptions);
     }
 
     private void moveCamera(double latitude, double longitude) {

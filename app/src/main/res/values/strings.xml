@@ -91,4 +91,5 @@
     <string name="notification_volume">notification_volume</string>
     <string name="vibration">vibration</string>
     <string name="radius">radius</string>
+    <string name="address">address</string>
 </resources>

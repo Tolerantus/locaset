@@ -3,6 +3,7 @@ package ru.inventions.tolerantus.locaset.activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.location.Geocoder;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -13,17 +14,21 @@ import android.view.MenuItem;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.Toast;
+
+import java.util.Locale;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MediaService;
+import ru.inventions.tolerantus.locaset.util.AddressUtils;
 
 /**
  * Created by Aleksandr on 23.01.2017.
  */
 
-public class DetailedSettingsActivity extends AppCompatActivity {
+public class DetailedSettingsActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener{
 
     private EditText etLocationName;
     private EditText etLatitude;
@@ -31,19 +36,21 @@ public class DetailedSettingsActivity extends AppCompatActivity {
     private EditText etAltitude;
     private EditText etRadius;
 
+    private String initialLatitude;
+    private String initialLongitude;
+
     private SeekBar sbRingtone;
     private int ringMax;
     private SeekBar sbMusic;
     private int musicMax;
     private SeekBar sbNotification;
     private int notifMax;
-    private CheckBox cbVibro;
-
-    private int max;
+    private Switch sVibro;
 
     private Long locationId;
 
     private Dao dao;
+    private Geocoder geocoder;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -58,6 +65,7 @@ public class DetailedSettingsActivity extends AppCompatActivity {
         if (locationId != -1) {
             initViewsContent();
         }
+        geocoder = new Geocoder(this, Locale.getDefault());
     }
 
     private void initViews() {
@@ -75,12 +83,13 @@ public class DetailedSettingsActivity extends AppCompatActivity {
         sbMusic = ((SeekBar) findViewById(R.id.sb_system));
         musicMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
 
-        cbVibro = (CheckBox) findViewById(R.id.cb_vibration);
+        sVibro = (Switch) findViewById(R.id.s_vibration);
 
-        max = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING);
         sbRingtone.setMax(ringMax);
         sbNotification.setMax(notifMax);
         sbMusic.setMax(musicMax);
+
+        sbRingtone.setOnSeekBarChangeListener(this);
     }
 
     private void initViewsContent() {
@@ -89,15 +98,22 @@ public class DetailedSettingsActivity extends AppCompatActivity {
             etLocationName.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.location_name_column))));
             etLatitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.latitude_column))));
             etLongitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.longitude_column))));
+            initialLatitude = etLatitude.getText().toString();
+            initialLongitude = etLongitude.getText().toString();
+
             etAltitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.altitude_column))));
             etRadius.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.radius))));
 
-            AudioManager audioManager = ((AudioManager) getSystemService(Context.AUDIO_SERVICE));
             sbRingtone.setProgress(((int) (ringMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.ringtone_volume_column))))));
             sbNotification.setProgress(((int) (notifMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.notification_volume))))));
             sbMusic.setProgress(((int) (musicMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.music_volume))))));
 
-            cbVibro.setChecked(locationData.getInt(locationData.getColumnIndex(getString(R.string.vibration))) != 0);
+            if (sbRingtone.getProgress() > 0) {
+                sVibro.setChecked(true);
+                sVibro.setEnabled(false);
+            } else {
+                sVibro.setChecked(locationData.getInt(locationData.getColumnIndex(getString(R.string.vibration))) != 0);
+            }
         }
     }
 
@@ -110,9 +126,16 @@ public class DetailedSettingsActivity extends AppCompatActivity {
         Double ringtoneVolume = sbRingtone.getProgress() * 1.0 / ringMax;
         Double musicVolume = sbMusic.getProgress() * 1.0 / musicMax;
         Double notificationVolume = sbNotification.getProgress() * 1.0 / notifMax;
+        boolean vibro = sVibro.isChecked();
+        String newAddress = "";
+        if (!initialLatitude.equals(etLatitude.getText().toString()) || !initialLongitude.equals(etLongitude.getText().toString())) {
+            newAddress = AddressUtils.getStringAddress(latitude, longitude, this);
+            dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro, newAddress);
+        } else {
+            dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro);
+        }
 
-        boolean vibro = cbVibro.isChecked();
-        dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro);
+
         if (MediaService.currentPreferenceId.get() == locationId) {
             MediaService.currentPreferenceId.set(-1);
         }
@@ -130,6 +153,26 @@ public class DetailedSettingsActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         save();
         return true;
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+        if (seekBar.getProgress() == 0) {
+            sVibro.setEnabled(true);
+        } else {
+            sVibro.setChecked(true);
+            sVibro.setEnabled(false);
+        }
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+
     }
 }
 

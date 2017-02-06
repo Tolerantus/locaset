@@ -36,9 +36,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         dao = new Dao(this);
         lv = (ListView) findViewById(R.id.lvMain);
-        String[] from = new String[]{getString(R.string.location_name_column)};
-        int[] to = new int[]{R.id.tv_location_name};
-        adapter = new LocationCursorAdapter(this, R.layout.activity_main_list_item, dao.getAllLocations(), from, to, CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
+        adapter = new LocationCursorAdapter(this, dao.getAllLocations(), CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
         lv.setAdapter(adapter);
         registerForContextMenu(lv);
         findViewById(R.id.bt_add).setOnClickListener(this);

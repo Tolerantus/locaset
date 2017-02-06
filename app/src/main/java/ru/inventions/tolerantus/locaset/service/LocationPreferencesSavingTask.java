@@ -2,6 +2,8 @@ package ru.inventions.tolerantus.locaset.service;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -16,10 +18,14 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
+import java.io.IOException;
 import java.io.StringReader;
+import java.util.List;
+import java.util.Locale;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.util.AddressUtils;
 
 /**
  * Created by Aleksandr on 13.01.2017.
@@ -33,6 +39,8 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
     private double longitude;
     private Activity activityInvoker;
     private Intent afterSavingIntent;
+    private Geocoder geocoder;
+    private List<Address> addresses;
 
     public LocationPreferencesSavingTask(Activity activityInvoker, Dao dao, long locationId, double latitude, double longitude, Intent afterSavingIntent) {
         this.activityInvoker = activityInvoker;
@@ -41,6 +49,7 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
         this.latitude = latitude;
         this.longitude = longitude;
         this.afterSavingIntent = afterSavingIntent;
+        this.geocoder = new Geocoder(activityInvoker, Locale.getDefault());
     }
 
     @Override
@@ -106,7 +115,8 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
     @Override
     protected void onProgressUpdate(Double... values) {
         super.onProgressUpdate(values);
-        dao.updateLocation(locationId, latitude, longitude, values[0]);
+        String stringAddress = AddressUtils.getStringAddress(latitude, longitude, activityInvoker);
+        dao.updateLocation(locationId, latitude, longitude, values[0], stringAddress);
         if (afterSavingIntent != null) {
             activityInvoker.startActivity(afterSavingIntent);
         }
