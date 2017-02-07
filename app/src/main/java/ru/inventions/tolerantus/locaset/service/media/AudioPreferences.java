@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.service;
+package ru.inventions.tolerantus.locaset.service.media;
 
 /**
  * Created by Aleksandr on 13.01.2017.

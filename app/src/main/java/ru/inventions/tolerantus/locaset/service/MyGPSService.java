@@ -8,7 +8,8 @@ import android.util.Log;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 
-import ru.inventions.tolerantus.locaset.util.MyCachedThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.async.GpsLookupTask;
+import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 
 /**
  * Created by Aleksandr on 07.01.2017.

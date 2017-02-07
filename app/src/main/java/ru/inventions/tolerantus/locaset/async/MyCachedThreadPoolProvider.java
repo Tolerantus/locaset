@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.util;
+package ru.inventions.tolerantus.locaset.async;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;

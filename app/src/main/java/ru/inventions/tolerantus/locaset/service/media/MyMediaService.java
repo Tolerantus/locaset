@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.service;
+package ru.inventions.tolerantus.locaset.service.media;
 
 import android.content.Context;
 import android.media.AudioManager;
@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * Created by Aleksandr on 13.01.2017.
  */
 
-public class MediaService {
+public class MyMediaService {
 
-    private static MediaService instance;
+    private static MyMediaService instance;
     public static final AtomicLong currentPreferenceId = new AtomicLong(-1);
 
-    private MediaService() {
+    private MyMediaService() {
 
     }
 
@@ -38,9 +38,9 @@ public class MediaService {
         }
     }
 
-    public static MediaService getInstance() {
+    public static MyMediaService getInstance() {
         if (instance == null) {
-            instance = new MediaService();
+            instance = new MyMediaService();
         }
         return instance;
     }

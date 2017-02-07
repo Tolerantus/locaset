@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.util;
+package ru.inventions.tolerantus.locaset.db;
 
 import android.content.Context;
 import android.database.Cursor;

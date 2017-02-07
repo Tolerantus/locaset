@@ -11,7 +11,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Switch;
@@ -21,7 +20,7 @@ import java.util.Locale;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.service.MediaService;
+import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
 
 /**
@@ -136,8 +135,8 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         }
 
 
-        if (MediaService.currentPreferenceId.get() == locationId) {
-            MediaService.currentPreferenceId.set(-1);
+        if (MyMediaService.currentPreferenceId.get() == locationId) {
+            MyMediaService.currentPreferenceId.set(-1);
         }
         Log.d(this.getClass().getSimpleName(), "Saving location");
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();

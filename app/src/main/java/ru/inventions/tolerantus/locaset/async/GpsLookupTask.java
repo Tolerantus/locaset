@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.service;
+package ru.inventions.tolerantus.locaset.async;
 
 import android.Manifest;
 import android.content.Context;
@@ -23,6 +23,8 @@ import java.util.Map;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.service.media.AudioPreferences;
+import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 
 /**
  * Created by Aleksandr on 09.01.2017.
@@ -172,7 +174,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
     private void makeAudioServiceCall(long locationId) {
         Cursor c = dao.getLocationById(locationId);
         if (c.moveToFirst()) {
-            MediaService ms = MediaService.getInstance();
+            MyMediaService ms = MyMediaService.getInstance();
             AudioPreferences p = new AudioPreferences();
             p.setPreferenceId(c.getLong(c.getColumnIndex("_id")));
             p.setRingtoneVolume(c.getFloat(c.getColumnIndex(context.getString(R.string.ringtone_volume_column))));

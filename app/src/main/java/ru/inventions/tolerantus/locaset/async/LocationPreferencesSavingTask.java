@@ -1,4 +1,4 @@
-package ru.inventions.tolerantus.locaset.service;
+package ru.inventions.tolerantus.locaset.async;
 
 import android.app.Activity;
 import android.content.Intent;

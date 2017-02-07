@@ -22,7 +22,7 @@ import java.util.Locale;
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
-import ru.inventions.tolerantus.locaset.util.LocationCursorAdapter;
+import ru.inventions.tolerantus.locaset.db.LocationCursorAdapter;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 

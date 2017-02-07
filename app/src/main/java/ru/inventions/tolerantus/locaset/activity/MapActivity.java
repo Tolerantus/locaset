@@ -33,12 +33,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.util.concurrent.Executors;
-
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.service.LocationPreferencesSavingTask;
-import ru.inventions.tolerantus.locaset.util.MyCachedThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.async.LocationPreferencesSavingTask;
+import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.util.Validator;
 
 /**
