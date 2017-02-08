@@ -1,9 +1,8 @@
 package ru.inventions.tolerantus.locaset.async;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Intent;
-import android.location.Address;
-import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -13,19 +12,13 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-import org.xmlpull.v1.XmlPullParserFactory;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.List;
-import java.util.Locale;
+import com.google.android.gms.maps.model.Marker;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
+import ru.inventions.tolerantus.locaset.util.CvBuilder;
+import ru.inventions.tolerantus.locaset.util.ParsingUtils;
 
 /**
  * Created by Aleksandr on 13.01.2017.
@@ -37,19 +30,18 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
     private long locationId;
     private double latitude;
     private double longitude;
+    private boolean markerChanged;
     private Activity activityInvoker;
     private Intent afterSavingIntent;
-    private Geocoder geocoder;
-    private List<Address> addresses;
 
-    public LocationPreferencesSavingTask(Activity activityInvoker, Dao dao, long locationId, double latitude, double longitude, Intent afterSavingIntent) {
+    public LocationPreferencesSavingTask(Activity activityInvoker, Dao dao, long locationId, Marker m, boolean mChanged, Intent afterSavingIntent) {
         this.activityInvoker = activityInvoker;
         this.dao = dao;
         this.locationId = locationId;
-        this.latitude = latitude;
-        this.longitude = longitude;
+        latitude = m.getPosition().latitude;
+        longitude = m.getPosition().longitude;
+        markerChanged = mChanged;
         this.afterSavingIntent = afterSavingIntent;
-        this.geocoder = new Geocoder(activityInvoker, Locale.getDefault());
     }
 
     @Override
@@ -59,64 +51,43 @@ public class LocationPreferencesSavingTask extends AsyncTask<Void, Double, Void>
 
     @Override
     protected Void doInBackground(Void... doubles) {
-        RequestQueue queue = Volley.newRequestQueue(activityInvoker);
-        String url = "http://maps.googleapis.com/maps/api/elevation/" + "xml?locations="
-                + latitude + "," + longitude + "&sensor=true";
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d(this.getClass().getSimpleName(), "Response was received, starting parsing");
-                        publishProgress(parseXmlResponse(response));
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(this.getClass().getSimpleName(), "Error occurred during elevation calculation! ",error);
-                publishProgress(0d);
-            }
-        });
-        queue.add(stringRequest);
-        return null;
-    }
-
-    private double parseXmlResponse(String xmlResponse) {
-        double elevation = 0d;
-        try {
-            Log.d(this.getClass().getSimpleName(), "Start parsing XML response for elevation");
-            XmlPullParser xpp = prepareXpp(xmlResponse);
-            while (xpp.getEventType() != XmlPullParser.END_DOCUMENT) {
-                switch (xpp.getEventType()) {
-                    case XmlPullParser.START_TAG:
-                        if (xpp.getName().equals(activityInvoker.getString(R.string.elavation_tag))) {
-                            elevation = Double.parseDouble(xpp.nextText());
+        if (markerChanged) {
+            RequestQueue queue = Volley.newRequestQueue(activityInvoker);
+            String url = "http://maps.googleapis.com/maps/api/elevation/" + "xml?locations="
+                    + latitude + "," + longitude + "&sensor=true";
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            Log.d(this.getClass().getSimpleName(), "Response was received, starting parsing");
+                            publishProgress(ParsingUtils.parseXmlResponseElevation(response, activityInvoker));
                         }
-                        break;
-                    default:
-                        break;
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e(this.getClass().getSimpleName(), "Error occurred during elevation calculation! ",error);
+                    publishProgress(0d);
                 }
-                xpp.next();
-            }
-        } catch (Exception e) {
-            Log.e(this.getClass().getSimpleName(), "Error during parsing XML response from http://maps.googleapis.com/maps/api/elevation/", e);
+            });
+            queue.add(stringRequest);
+        } else {
+            publishProgress();
         }
-        Log.d(this.getClass().getSimpleName(), "elevation = " + elevation);
-        return elevation;
-    }
-
-    private XmlPullParser prepareXpp(String input) throws XmlPullParserException {
-        XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-        factory.setNamespaceAware(true);
-        XmlPullParser xpp = factory.newPullParser();
-        xpp.setInput(new StringReader(input));
-        return xpp;
+        return null;
     }
 
     @Override
     protected void onProgressUpdate(Double... values) {
         super.onProgressUpdate(values);
-        String stringAddress = AddressUtils.getStringAddress(latitude, longitude, activityInvoker);
-        dao.updateLocation(locationId, latitude, longitude, values[0], stringAddress);
+        if (values.length != 0) {
+            String stringAddress = AddressUtils.getStringAddress(latitude, longitude, activityInvoker);
+            ContentValues cv = CvBuilder.create()
+                    .append(activityInvoker.getString(R.string.latitude_column), latitude)
+                    .append(activityInvoker.getString(R.string.longitude_column), longitude)
+                    .append(activityInvoker.getString(R.string.altitude_column), values[0])
+                    .append(activityInvoker.getString(R.string.address), stringAddress).get();
+            dao.updateLocation(locationId, cv);
+        }
         if (afterSavingIntent != null) {
             activityInvoker.startActivity(afterSavingIntent);
         }

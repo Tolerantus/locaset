@@ -50,26 +50,8 @@ public class Dao {
         db.update(context.getString(R.string.location_table), cv, "_id = " + id, null);
     }
 
-    public void updateLocation(long id, String locationName, int radius, double latitude, double longitude, double altitude, double ringtone, double music, double notification, boolean vibro) {
-        ContentValues cv = new ContentValues();
-        cv.put(context.getString(R.string.location_name_column), locationName);
-        cv.put(context.getString(R.string.radius), radius);
-        cv.put(context.getString(R.string.latitude_column), latitude);
-        cv.put(context.getString(R.string.longitude_column), longitude);
-        cv.put(context.getString(R.string.altitude_column), altitude);
-        cv.put(context.getString(R.string.ringtone_volume_column), ringtone);
-        cv.put(context.getString(R.string.music_volume), music);
-        cv.put(context.getString(R.string.notification_volume), notification);
-        cv.put(context.getString(R.string.vibration), vibro?1:0);
-        db.update(context.getString(R.string.location_table), cv, "_id = " + id, null);
-    }
 
-    public void updateLocation(long id, double latitude, double longitude, double altitude, String address) {
-        ContentValues cv = new ContentValues();
-        cv.put(context.getString(R.string.latitude_column), latitude);
-        cv.put(context.getString(R.string.longitude_column), longitude);
-        cv.put(context.getString(R.string.altitude_column), altitude);
-        cv.put(context.getString(R.string.address), address);
+    public void updateLocation(long id, ContentValues cv) {
         db.update(context.getString(R.string.location_table), cv, "_id = " + id, null);
     }
 

@@ -69,12 +69,11 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     }
 
     private LocationPreferencesSavingTask saveLocation(Intent afterSavingIntent) {
-        LocationPreferencesSavingTask task = null;
         locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
         if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
         }
-        task = new LocationPreferencesSavingTask(this, dao, locationId, marker.getPosition().latitude, marker.getPosition().longitude, afterSavingIntent);
+        LocationPreferencesSavingTask task = new LocationPreferencesSavingTask(this, dao, locationId, marker, locationChanged, afterSavingIntent);
         task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
         return task;
     }
@@ -259,8 +258,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     protected void onDestroy() {
-        Intent nowhere = null;
-        saveLocation(nowhere);
+        Intent mainPage = new Intent(this, MainActivity.class);
+        saveLocation(mainPage);
         googleApiClient.disconnect();
         super.onDestroy();
     }

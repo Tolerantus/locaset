@@ -22,12 +22,13 @@ import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
+import ru.inventions.tolerantus.locaset.util.CvBuilder;
 
 /**
  * Created by Aleksandr on 23.01.2017.
  */
 
-public class DetailedSettingsActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener{
+public class DetailedSettingsActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener {
 
     private EditText etLocationName;
     private EditText etLatitude;
@@ -49,7 +50,6 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
     private Long locationId;
 
     private Dao dao;
-    private Geocoder geocoder;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -64,7 +64,6 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         if (locationId != -1) {
             initViewsContent();
         }
-        geocoder = new Geocoder(this, Locale.getDefault());
     }
 
     private void initViews() {
@@ -97,10 +96,9 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
             etLocationName.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.location_name_column))));
             etLatitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.latitude_column))));
             etLongitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.longitude_column))));
+            etAltitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.altitude_column))));
             initialLatitude = etLatitude.getText().toString();
             initialLongitude = etLongitude.getText().toString();
-
-            etAltitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.altitude_column))));
             etRadius.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.radius))));
 
             sbRingtone.setProgress(((int) (ringMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.ringtone_volume_column))))));
@@ -126,14 +124,22 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         Double musicVolume = sbMusic.getProgress() * 1.0 / musicMax;
         Double notificationVolume = sbNotification.getProgress() * 1.0 / notifMax;
         boolean vibro = sVibro.isChecked();
-        String newAddress = "";
-        if (!initialLatitude.equals(etLatitude.getText().toString()) || !initialLongitude.equals(etLongitude.getText().toString())) {
-            newAddress = AddressUtils.getStringAddress(latitude, longitude, this);
-            dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro, newAddress);
-        } else {
-            dao.updateLocation(locationId, locationName, radius.intValue(), latitude, longitude, altitude, ringtoneVolume, musicVolume, notificationVolume, vibro);
+        CvBuilder cvBuilder = CvBuilder.create()
+                .append(getString(R.string.location_name_column), locationName)
+                .append(getString(R.string.radius), radius.intValue())
+                .append(getString(R.string.latitude_column), latitude)
+                .append(getString(R.string.longitude_column), longitude)
+                .append(getString(R.string.altitude_column), altitude)
+                .append(getString(R.string.ringtone_volume_column), ringtoneVolume)
+                .append(getString(R.string.music_volume), musicVolume)
+                .append(getString(R.string.notification_volume), notificationVolume)
+                .append(getString(R.string.vibration), vibro?1:0);
+        if (isMarkerMoved() || !isAddressInitialized(locationId)) {
+            String newAddress = AddressUtils.getStringAddress(latitude, longitude, this);
+            cvBuilder.append(getString(R.string.address), newAddress);
         }
 
+        dao.updateLocation(locationId, cvBuilder.get());
 
         if (MyMediaService.currentPreferenceId.get() == locationId) {
             MyMediaService.currentPreferenceId.set(-1);
@@ -172,6 +178,21 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
 
+    }
+
+    private boolean isMarkerMoved() {
+        return !initialLatitude.equals(etLatitude.getText().toString()) || !initialLongitude.equals(etLongitude.getText().toString());
+    }
+
+    private boolean isAddressInitialized(long id) {
+        Cursor c = dao.getLocationById(id);
+        if (c.moveToFirst()) {
+            String address = c.getString(c.getColumnIndex(getString(R.string.address)));
+            if (address == null || address.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
