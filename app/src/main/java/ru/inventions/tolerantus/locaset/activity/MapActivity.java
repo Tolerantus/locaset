@@ -1,6 +1,7 @@
 package ru.inventions.tolerantus.locaset.activity;
 
 import android.Manifest;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -34,9 +35,10 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.async.CoordinatesSavingTask;
 import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.async.LocationPreferencesSavingTask;
 import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.util.CvBuilder;
 import ru.inventions.tolerantus.locaset.util.Validator;
 
 /**
@@ -68,12 +70,16 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         }
     }
 
-    private LocationPreferencesSavingTask saveLocation(Intent afterSavingIntent) {
+    private CoordinatesSavingTask saveLocation(Intent afterSavingIntent) {
         locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
         if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
         }
-        LocationPreferencesSavingTask task = new LocationPreferencesSavingTask(this, dao, locationId, marker, locationChanged, afterSavingIntent);
+        ContentValues cv = CvBuilder.create()
+                .append(getString(R.string.latitude_column), marker.getPosition().latitude)
+                .append(getString(R.string.longitude_column), marker.getPosition().longitude)
+                .get();
+        CoordinatesSavingTask task = new CoordinatesSavingTask(this, afterSavingIntent, locationId, cv, locationChanged);
         task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
         return task;
     }

@@ -15,13 +15,8 @@ import java.util.Locale;
 
 public class AddressUtils {
 
-    private static Geocoder geocoder;
-
-    public static String getStringAddress(double latitude, double longitude, Context context) {
+    public static String getStringAddress(double latitude, double longitude, Geocoder geocoder) {
         String address = "";
-        if (geocoder == null) {
-            geocoder = new Geocoder(context, Locale.getDefault());
-        }
         List<Address> addresses = null;
         try {
             addresses = geocoder.getFromLocation(latitude, longitude, 1);

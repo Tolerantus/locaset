@@ -19,6 +19,9 @@ import android.widget.Toast;
 import java.util.Locale;
 
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
+import ru.inventions.tolerantus.locaset.async.CoordinatesSavingTask;
+import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
@@ -134,18 +137,17 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
                 .append(getString(R.string.music_volume), musicVolume)
                 .append(getString(R.string.notification_volume), notificationVolume)
                 .append(getString(R.string.vibration), vibro?1:0);
-        if (isMarkerMoved() || !isAddressInitialized(locationId)) {
-            String newAddress = AddressUtils.getStringAddress(latitude, longitude, this);
-            cvBuilder.append(getString(R.string.address), newAddress);
-        }
 
-        dao.updateLocation(locationId, cvBuilder.get());
+        CoordinatesSavingTask savingTask = new CoordinatesSavingTask(this, null, locationId, cvBuilder.get(), isMarkerMoved());
+        savingTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
 
-        if (MyMediaService.currentPreferenceId.get() == locationId) {
-            MyMediaService.currentPreferenceId.set(-1);
-        }
         Log.d(this.getClass().getSimpleName(), "Saving location");
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+    }
+
+    private void refreshAddresses(){
+        AddressRefreshTask refreshTask = new AddressRefreshTask(this);
+        refreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
     }
 
     @Override
@@ -156,7 +158,14 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        save();
+        switch (item.getItemId()) {
+            case R.id.save :
+                save();
+                break;
+            case R.id.refresh:
+                refreshAddresses();
+                break;
+        }
         return true;
     }
 
