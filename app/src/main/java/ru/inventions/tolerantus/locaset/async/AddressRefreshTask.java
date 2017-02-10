@@ -1,9 +1,13 @@
 package ru.inventions.tolerantus.locaset.async;
 
+import android.app.Activity;
 import android.content.Context;
 import android.database.Cursor;
 import android.location.Geocoder;
 import android.os.AsyncTask;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.util.Log;
+import android.widget.CursorAdapter;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -20,10 +24,15 @@ import ru.inventions.tolerantus.locaset.util.CvBuilder;
 
 public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
 
+    private static final String tag = "AddressRefreshTask";
+
     private Context context;
 
-    public AddressRefreshTask(Context context) {
+    private CursorAdapter adapter;
+
+    public AddressRefreshTask(Context context, CursorAdapter adapter) {
         this.context = context;
+        this.adapter = adapter;
     }
 
     /**
@@ -42,25 +51,50 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
      */
     @Override
     protected Void doInBackground(Void... params) {
+        Log.d(tag, "Starting address refreshing task");
         Dao dao = new Dao(context);
         Map<Long, String> locationToUpdate = new HashMap<>();
         Cursor c = dao.getAllLocations();
         if (c.moveToFirst()) {
             do {
-                String address = c.getString(c.getColumnIndex(context.getString(R.string.address)));
-                if (address == null || address.isEmpty()) {
-                    double latitude = c.getDouble(c.getColumnIndex(context.getString(R.string.latitude_column)));
-                    double longitude = c.getDouble(c.getColumnIndex(context.getString(R.string.longitude_column)));
-                    String refreshedAddress = AddressUtils.getStringAddress(latitude, longitude, new Geocoder(context, Locale.getDefault()));
-                    if (refreshedAddress != null && !refreshedAddress.isEmpty()) {
-                        locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
-                    }
+                double latitude = c.getDouble(c.getColumnIndex(context.getString(R.string.latitude_column)));
+                double longitude = c.getDouble(c.getColumnIndex(context.getString(R.string.longitude_column)));
+                String refreshedAddress = AddressUtils.getStringAddress(latitude, longitude, new Geocoder(context, Locale.getDefault()));
+                if (refreshedAddress != null && !refreshedAddress.isEmpty()) {
+                    locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
                 }
             } while (c.moveToNext());
         }
+        if (!locationToUpdate.keySet().isEmpty()) {
+            Log.d(tag, "Found " + locationToUpdate.size() + " locations for update");
+        }
         for (Long id : locationToUpdate.keySet()) {
+            Log.d(tag, "Start updating location address with id=" + id);
             dao.updateLocation(id, CvBuilder.create().append(context.getString(R.string.address), locationToUpdate.get(id)).get());
         }
+        publishProgress();
         return null;
+    }
+
+    /**
+     * Runs on the UI thread after {@link #publishProgress} is invoked.
+     * The specified values are the values passed to {@link #publishProgress}.
+     *
+     * @param values The values indicating progress.
+     * @see #publishProgress
+     * @see #doInBackground
+     */
+    @Override
+    protected void onProgressUpdate(Void... values) {
+        super.onProgressUpdate(values);
+        if (context instanceof Activity) {
+            SwipeRefreshLayout swipeRefreshLayout = ((SwipeRefreshLayout) ((Activity) context).findViewById(R.id.refresh_layout));
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+            if (adapter != null) {
+                adapter.changeCursor(new Dao(context).getAllLocations());
+            }
+        }
     }
 }

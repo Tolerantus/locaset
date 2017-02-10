@@ -92,6 +92,7 @@ public class CoordinatesSavingTask extends AsyncTask<Void, Double, Void> {
                         public void onResponse(String response) {
                             Log.d(this.getClass().getSimpleName(), "Response was received, starting parsing");
                             contentForSaving.put(activityInvoker.getString(R.string.altitude_column), ParsingUtils.parseXmlResponseElevation(response, activityInvoker));
+                            contentForSaving.put(activityInvoker.getString(R.string.address), "");
                             publishProgress();
                         }
                     }, new Response.ErrorListener() {
@@ -99,6 +100,7 @@ public class CoordinatesSavingTask extends AsyncTask<Void, Double, Void> {
                 public void onErrorResponse(VolleyError error) {
                     Log.e(this.getClass().getSimpleName(), "Error occurred during elevation calculation! ", error);
                     contentForSaving.put(activityInvoker.getString(R.string.altitude_column), 0d);
+                    contentForSaving.put(activityInvoker.getString(R.string.address), "");
                     publishProgress();
                 }
             });

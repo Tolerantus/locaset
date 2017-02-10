@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.CursorAdapter;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.ContextMenu;
@@ -18,8 +19,11 @@ import android.widget.Toast;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
+import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.db.LocationCursorAdapter;
@@ -29,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ListView lv;
     private Dao dao;
     private LocationCursorAdapter adapter;
+    private SwipeRefreshLayout refreshLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,9 +45,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         lv.setAdapter(adapter);
         registerForContextMenu(lv);
         findViewById(R.id.bt_add).setOnClickListener(this);
+        refreshLayout = ((SwipeRefreshLayout) findViewById(R.id.refresh_layout));
+        refreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                refreshLayout.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+//                        refreshLayout.setRefreshing(true);
+                        refresh();
+                    }
+                }, 5000);
+
+            }
+        });
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 1);
+    }
+
+    private void refresh() {
+        AddressRefreshTask refreshTask = new AddressRefreshTask(MainActivity.this, adapter);
+        refreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
     }
 
     @Override
@@ -74,6 +98,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     stopService(new Intent(this, MyGPSService.class));
                     item.setIcon(android.R.drawable.ic_media_play);
                 }
+                break;
+            case R.id.refresh:
+                refreshLayout.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        refresh();
+                    }
+                }, 5000);
+                break;
         }
         return true;
     }
@@ -128,4 +161,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             startCustomizingLocation(id);
         }
     }
+
+
 }

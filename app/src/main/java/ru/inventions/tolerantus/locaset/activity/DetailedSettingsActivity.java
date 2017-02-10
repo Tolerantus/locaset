@@ -141,13 +141,11 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         CoordinatesSavingTask savingTask = new CoordinatesSavingTask(this, null, locationId, cvBuilder.get(), isMarkerMoved());
         savingTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
 
+        AddressRefreshTask addressRefreshTask = new AddressRefreshTask(this, null);
+        addressRefreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+
         Log.d(this.getClass().getSimpleName(), "Saving location");
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
-    }
-
-    private void refreshAddresses(){
-        AddressRefreshTask refreshTask = new AddressRefreshTask(this);
-        refreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
     }
 
     @Override
@@ -161,9 +159,6 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         switch (item.getItemId()) {
             case R.id.save :
                 save();
-                break;
-            case R.id.refresh:
-                refreshAddresses();
                 break;
         }
         return true;

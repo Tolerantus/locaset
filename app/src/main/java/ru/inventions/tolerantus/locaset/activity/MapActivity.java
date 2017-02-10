@@ -35,6 +35,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
 import ru.inventions.tolerantus.locaset.async.CoordinatesSavingTask;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
@@ -70,7 +71,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         }
     }
 
-    private CoordinatesSavingTask saveLocation(Intent afterSavingIntent) {
+    private void saveLocation(Intent afterSavingIntent) {
         locationId = getIntent().getLongExtra(getString(R.string.location_id), -1);
         if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
@@ -79,9 +80,10 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 .append(getString(R.string.latitude_column), marker.getPosition().latitude)
                 .append(getString(R.string.longitude_column), marker.getPosition().longitude)
                 .get();
-        CoordinatesSavingTask task = new CoordinatesSavingTask(this, afterSavingIntent, locationId, cv, locationChanged);
-        task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
-        return task;
+        CoordinatesSavingTask coordinatesSavingTask = new CoordinatesSavingTask(this, afterSavingIntent, locationId, cv, locationChanged);
+        coordinatesSavingTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+        AddressRefreshTask addressRefreshTask = new AddressRefreshTask(this, null);
+        addressRefreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
     }
 
     @Override
@@ -202,7 +204,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 .strokeColor(Color.RED)
                 .strokeWidth(2);
 
-        zone =  map.addCircle(circleOptions);
+        zone = map.addCircle(circleOptions);
     }
 
     private void moveCamera(double latitude, double longitude) {
@@ -265,7 +267,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     protected void onDestroy() {
         Intent mainPage = new Intent(this, MainActivity.class);
-        saveLocation(mainPage);
+        saveLocation(null);
         googleApiClient.disconnect();
         super.onDestroy();
     }
