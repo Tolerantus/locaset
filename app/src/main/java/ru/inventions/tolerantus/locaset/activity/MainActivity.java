@@ -28,6 +28,8 @@ import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.db.LocationCursorAdapter;
 
+import static ru.inventions.tolerantus.locaset.util.LogUtils.*;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private ListView lv;
@@ -38,6 +40,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        debug("creating main activity");
+
         setContentView(R.layout.activity_main);
         dao = new Dao(this);
         lv = (ListView) findViewById(R.id.lvMain);
@@ -49,14 +53,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         refreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                refreshLayout.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-//                        refreshLayout.setRefreshing(true);
-                        refresh();
-                    }
-                }, 5000);
-
+                refresh();
             }
         });
         ActivityCompat.requestPermissions(this,
@@ -78,9 +75,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_options_menu, menu);
         if (MyGPSService.isServiceOnline()) {
-            menu.getItem(0).setIcon(android.R.drawable.ic_media_pause);
+            menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_pause);
         } else {
-            menu.getItem(0).setIcon(android.R.drawable.ic_media_play);
+            menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_play);
         }
         return true;
     }
@@ -88,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.menu_options_item_stop_service:
+            case R.id.main_opt_service:
                 if (!MyGPSService.isServiceOnline()) {
                     Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
                     startService(new Intent(this, MyGPSService.class));
@@ -100,12 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.refresh:
-                refreshLayout.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        refresh();
-                    }
-                }, 5000);
+                refresh();
                 break;
         }
         return true;
@@ -127,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startCustomizingLocation(long id) {
+        debug("preparing location customizing activity for location id=" + id);
         Intent settingsIntent = new Intent(this, MapActivity.class);
         settingsIntent.putExtra(getString(R.string.location_id), id);
         startActivity(settingsIntent);
@@ -156,11 +149,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("NewLocation" + new SimpleDateFormat("_dd-MM-yyyy_HH:mm:ss", Locale.ENGLISH).format(new Date()), 60, 30, 0);
+        long id = dao.createLocation("New location", 60, 30, 0);
+        debug("added location with id=" + id);
         if (id != -1) {
             startCustomizingLocation(id);
         }
     }
 
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        finishAffinity();
+    }
 }

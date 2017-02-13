@@ -26,6 +26,9 @@ import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.service.media.AudioPreferences;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 
+import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
+import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
+
 /**
  * Created by Aleksandr on 09.01.2017.
  */
@@ -49,7 +52,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        Log.d(this.getClass().getSimpleName(), "Google connected");
+        debug("Google connected");
         startLocationUpdates();
     }
 
@@ -57,7 +60,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
         if (ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            Log.d(this.getClass().getSimpleName(), "starting location lookup");
+            debug("starting location lookup");
             LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
         }
     }
@@ -66,7 +69,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
         if (ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            Log.d(this.getClass().getSimpleName(), "stopping location lookup");
+            debug("stopping location lookup");
             LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
         }
     }
@@ -75,7 +78,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
         if (ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            Log.d(this.getClass().getSimpleName(), "updating last know location by demand");
+            debug("updating last know location by demand");
             currentLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
         }
@@ -92,7 +95,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
     }
 
     public GpsLookupTask(Context context) {
-        Log.d(this.getClass().getSimpleName(), "creating GpsLookupTask");
+        debug("creating GpsLookupTask");
         this.context = context;
         this.dao = new Dao(context);
         if (googleApiClient == null) {
@@ -110,9 +113,9 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
 
     @Override
     protected Void doInBackground(Void... voids) {
-        Log.d(this.getClass().getSimpleName(), "starting background job");
+        debug("starting background job");
         while (!isCancelled()) {
-            Log.d(this.getClass().getSimpleName(), "Repeating background job execution");
+            debug("Repeating background job execution");
             if (currentLocation != null && dao != null) {
                 Cursor allSavedLocations = dao.getAllLocations();
                 if (allSavedLocations.moveToFirst()) {
@@ -128,7 +131,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
                         savedLocation.setAltitude(altitude);
 
                         float distance = currentLocation.distanceTo(savedLocation);
-                        Log.d(this.getClass().getSimpleName(), "computed distance = " + distance);
+                        debug("computed distance = " + distance);
                         if (distance < radius) {
                             crossedZones.put(id, distance);
                         }
@@ -145,21 +148,21 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
                             minDistance = Math.min(minDistance, crossedZones.get(id));
                         }
                     }
-                    Log.d(this.getClass().getSimpleName(), "*************************************************");
-                    Log.d(this.getClass().getSimpleName(), "Found nearest location with id=" + nearestLocationId+ "!!! Distance = " + minDistance);
-                    Log.d(this.getClass().getSimpleName(), "*************************************************");
+                    debug("*************************************************");
+                    debug("Found nearest location with id=" + nearestLocationId+ "!!! Distance = " + minDistance);
+                    debug("*************************************************");
                     publishProgress(nearestLocationId);
                 }
             } else if (currentLocation == null) {
                 rememberLastKnownLocation();
             }
             try {
-                Log.d(this.getClass().getSimpleName(), "going to sleep for 60 sec");
+                debug("going to sleep for 60 sec");
                 Thread.sleep(60 * 1_000);
             } catch (InterruptedException e) {
-                Log.e(this.getClass().getSimpleName(), "Caught InterruptedException during doInBackground method", e);
+                error("Caught InterruptedException during doInBackground method");
             }
-            Log.d(this.getClass().getSimpleName(), "waking up");
+            debug("waking up");
         }
         return null;
     }
@@ -187,7 +190,7 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
 
     @Override
     protected void onPostExecute(Void aVoid) {
-        Log.d(this.getClass().getSimpleName(), "Stopping GpsLookupTask execution, disconnecting Google");
+        debug("Stopping GpsLookupTask execution, disconnecting Google");
         super.onPostExecute(aVoid);
         stopLocationUpdates();
         googleApiClient.disconnect();
@@ -195,15 +198,15 @@ public class GpsLookupTask extends AsyncTask<Void, Long, Void> implements
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d(this.getClass().getSimpleName(), "location has been changed, updating last known location variable");
+        debug("location has been changed, updating last known location variable");
         currentLocation = location;
-        Log.d(this.getClass().getSimpleName(), currentLocation.toString());
+        debug(currentLocation.toString());
     }
 
     @Override
     protected void onCancelled() {
         super.onCancelled();
-        Log.d(this.getClass().getSimpleName(), "Cancelling task, disconnecting Google");
+        debug("Cancelling task, disconnecting Google");
         stopLocationUpdates();
         googleApiClient.disconnect();
     }

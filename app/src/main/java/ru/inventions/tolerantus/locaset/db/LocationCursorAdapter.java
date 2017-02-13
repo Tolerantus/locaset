@@ -40,7 +40,9 @@ public class LocationCursorAdapter extends CursorAdapter {
         String address = cursor.getString(cursor.getColumnIndex(context.getString(R.string.address)));
 
         tv_name.setText(name);
-        if (address != null && !address.isEmpty()) {
+        if (address == null || address.isEmpty()) {
+            tv_city.setText("...");
+        } else {
             tv_city.setText(address);
         }
     }

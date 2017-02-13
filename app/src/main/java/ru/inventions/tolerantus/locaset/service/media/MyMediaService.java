@@ -2,9 +2,10 @@ package ru.inventions.tolerantus.locaset.service.media;
 
 import android.content.Context;
 import android.media.AudioManager;
-import android.util.Log;
 
 import java.util.concurrent.atomic.AtomicLong;
+
+import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
 
 /**
  * Created by Aleksandr on 13.01.2017.
@@ -22,8 +23,8 @@ public class MyMediaService {
     public void adjustAudio(AudioPreferences preferences, Context context) {
         synchronized (currentPreferenceId) {
             if (currentPreferenceId.get() != preferences.getPreferenceId()) {
-                Log.d(this.getClass().getSimpleName(), "adjusting audio preferences, current preferences id = " + preferences.getPreferenceId());
-                Log.d(this.getClass().getSimpleName(), "preferences changes\n " + preferences);
+                debug("adjusting audio preferences, current preferences id = " + preferences.getPreferenceId());
+                debug("preferences changes\n " + preferences);
                 AudioManager amanager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
                 amanager.setStreamVolume(AudioManager.STREAM_RING, (int) (amanager.getStreamMaxVolume(AudioManager.STREAM_RING) * preferences.getRingtoneVolume()), 0);
                 amanager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (amanager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * preferences.getMusicVolume()), 0);

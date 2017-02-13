@@ -42,6 +42,9 @@ import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.util.CvBuilder;
 import ru.inventions.tolerantus.locaset.util.Validator;
 
+import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
+import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
+
 /**
  * Created by Aleksandr on 06.01.2017.
  */
@@ -88,25 +91,32 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "Details");
+        getMenuInflater().inflate(R.menu.map_options_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        Intent intent;
         switch (item.getItemId()) {
-            case 1:
-                Intent audioIntent = new Intent(this, DetailedSettingsActivity.class);
-                audioIntent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
-                if (locationChanged) {
-                    saveLocation(audioIntent);
-                } else {
-                    startActivity(audioIntent);
-                }
+            case R.id.map_opts_save_and_go:
+                intent = new Intent(this, DetailedSettingsActivity.class);
+                intent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
+                saveLocation(intent);
                 break;
+            case R.id.check_audio:
+                intent = new Intent(this, DetailedSettingsActivity.class);
+                intent.putExtra(getString(R.string.location_id), getIntent().getLongExtra(getString(R.string.location_id), -1));
+                startActivity(intent);
+                break;
+            case R.id.save:
+                saveLocation(null);
+                break;
+            default:
+                return false;
         }
 
-        return super.onOptionsItemSelected(item);
+        return true;
     }
 
     @Override
@@ -149,6 +159,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        debug("google map ready");
         map = googleMap;
         if (map != null) {
             map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
@@ -165,7 +176,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                 @Override
                 public void onMapClick(LatLng latLng) {
-                    Log.d(this.getClass().getSimpleName(), "New marker has been created");
+                    debug("New marker has been created");
                     addMarker(latLng);
                     locationChanged = true;
                 }
@@ -173,7 +184,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
                 @Override
                 public boolean onMyLocationButtonClick() {
-                    Log.d(this.getClass().getSimpleName(), "My location button has been pressed");
+                    debug("My location button has been pressed");
                     if (lastKnownLocation != null) {
                         moveCamera(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
                     }
@@ -224,7 +235,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         // Here, thisActivity is the current activity
-        Log.d(this.getClass().getSimpleName(), "Google connected");
+        debug("Google connected");
         updateLastKnownLocation();
     }
 
@@ -236,9 +247,9 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
             if (lastKnownLocation != null) {
-                Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+                debug(lastKnownLocation.toString());
             } else {
-                Log.d(this.getClass().getSimpleName(), "Last known location hasn't been initialized yet");
+                error("Last known location hasn't been initialized yet");
             }
         }
     }
@@ -253,21 +264,19 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            Log.d(this.getClass().getSimpleName(), "Location changed, applying changes");
+            debug("Location changed, applying changes");
             lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
                     googleApiClient);
             if (lastKnownLocation != null) {
-                Log.d(this.getClass().getSimpleName(), lastKnownLocation.toString());
+                debug(lastKnownLocation.toString());
             } else {
-                Log.d(this.getClass().getSimpleName(), "Last known location hasn't been initialized yet");
+                debug("Last known location hasn't been initialized yet");
             }
         }
     }
 
     @Override
     protected void onDestroy() {
-        Intent mainPage = new Intent(this, MainActivity.class);
-        saveLocation(null);
         googleApiClient.disconnect();
         super.onDestroy();
     }
@@ -284,7 +293,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     protected void onResume() {
         readDataFromDB(locationId);
-        Log.d(this.getClass().getSimpleName(), locationName);
+        debug(locationName);
         initMapSettings();
         locationChanged = false;
         super.onResume();

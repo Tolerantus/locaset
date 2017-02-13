@@ -17,6 +17,11 @@ import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
 import ru.inventions.tolerantus.locaset.util.CvBuilder;
+import ru.inventions.tolerantus.locaset.util.LogUtils;
+import ru.inventions.tolerantus.locaset.util.NetworkUtils;
+
+import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
+import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
 
 /**
  * Created by Aleksandr on 09.02.2017.
@@ -51,7 +56,12 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
      */
     @Override
     protected Void doInBackground(Void... params) {
-        Log.d(tag, "Starting address refreshing task");
+        if (!NetworkUtils.isAnyNetwork(context)) {
+            error("network wasn't found");
+            publishProgress();
+            return null;
+        }
+        debug("Starting address refreshing task");
         Dao dao = new Dao(context);
         Map<Long, String> locationToUpdate = new HashMap<>();
         Cursor c = dao.getAllLocations();
@@ -60,16 +70,13 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
                 double latitude = c.getDouble(c.getColumnIndex(context.getString(R.string.latitude_column)));
                 double longitude = c.getDouble(c.getColumnIndex(context.getString(R.string.longitude_column)));
                 String refreshedAddress = AddressUtils.getStringAddress(latitude, longitude, new Geocoder(context, Locale.getDefault()));
-                if (refreshedAddress != null && !refreshedAddress.isEmpty()) {
-                    locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
-                }
+                locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
             } while (c.moveToNext());
         }
         if (!locationToUpdate.keySet().isEmpty()) {
-            Log.d(tag, "Found " + locationToUpdate.size() + " locations for update");
+            debug("Found " + locationToUpdate.size() + " locations for update");
         }
         for (Long id : locationToUpdate.keySet()) {
-            Log.d(tag, "Start updating location address with id=" + id);
             dao.updateLocation(id, CvBuilder.create().append(context.getString(R.string.address), locationToUpdate.get(id)).get());
         }
         publishProgress();
@@ -93,6 +100,7 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
                 swipeRefreshLayout.setRefreshing(false);
             }
             if (adapter != null) {
+                debug("changing cursor for swipeRefreshLayout");
                 adapter.changeCursor(new Dao(context).getAllLocations());
             }
         }

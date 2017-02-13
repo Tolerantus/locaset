@@ -11,6 +11,9 @@ import java.io.StringReader;
 
 import ru.inventions.tolerantus.locaset.R;
 
+import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
+import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
+
 /**
  * Created by Aleksandr on 07.02.2017.
  */
@@ -20,7 +23,7 @@ public class ParsingUtils {
     public static double parseXmlResponseElevation(String xmlResponse, Context context) {
         double elevation = 0d;
         try {
-            Log.d(ParsingUtils.class.getSimpleName(), "Start parsing XML response for elevation");
+            debug("Start parsing XML response for elevation");
             XmlPullParser xpp = prepareXpp(xmlResponse);
             while (xpp.getEventType() != XmlPullParser.END_DOCUMENT) {
                 switch (xpp.getEventType()) {
@@ -35,9 +38,9 @@ public class ParsingUtils {
                 xpp.next();
             }
         } catch (Exception e) {
-            Log.e(ParsingUtils.class.getSimpleName(), "Error during parsing XML response from http://maps.googleapis.com/maps/api/elevation/", e);
+            error("Error during parsing XML response from http://maps.googleapis.com/maps/api/elevation/");
         }
-        Log.d(ParsingUtils.class.getSimpleName(), "elevation = " + elevation);
+        debug("elevation = " + elevation);
         return elevation;
     }
 
