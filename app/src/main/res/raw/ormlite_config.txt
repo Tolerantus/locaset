@@ -1,0 +1,44 @@
+#
+# generated on 2017/02/15 10:32:01
+#
+# --table-start--
+dataClass=ru.inventions.tolerantus.locaset.db.Location
+tableName=location
+# --table-fields-start--
+# --field-start--
+fieldName=id
+generatedId=true
+# --field-end--
+# --field-start--
+fieldName=name
+# --field-end--
+# --field-start--
+fieldName=latitude
+# --field-end--
+# --field-start--
+fieldName=longitude
+# --field-end--
+# --field-start--
+fieldName=altitude
+# --field-end--
+# --field-start--
+fieldName=address
+# --field-end--
+# --field-start--
+fieldName=ringtoneVol
+# --field-end--
+# --field-start--
+fieldName=musicVol
+# --field-end--
+# --field-start--
+fieldName=notificationVol
+# --field-end--
+# --field-start--
+fieldName=vibro
+# --field-end--
+# --field-start--
+fieldName=radius
+# --field-end--
+# --table-fields-end--
+# --table-end--
+#################################

@@ -239,6 +239,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         updateLastKnownLocation();
     }
 
+
+
     private void updateLastKnownLocation() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -292,10 +294,19 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
      */
     @Override
     protected void onResume() {
+        if (googleApiClient != null && !googleApiClient.isConnected()) {
+            googleApiClient.connect();
+        }
         readDataFromDB(locationId);
         debug(locationName);
         initMapSettings();
         locationChanged = false;
         super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        googleApiClient.disconnect();
+        super.onPause();
     }
 }

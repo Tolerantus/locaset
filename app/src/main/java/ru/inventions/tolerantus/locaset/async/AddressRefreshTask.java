@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.location.Geocoder;
 import android.os.AsyncTask;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
 import android.widget.CursorAdapter;
@@ -14,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.activity.MainActivity;
 import ru.inventions.tolerantus.locaset.db.Dao;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
 import ru.inventions.tolerantus.locaset.util.CvBuilder;
@@ -72,6 +74,7 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
                 String refreshedAddress = AddressUtils.getStringAddress(latitude, longitude, new Geocoder(context, Locale.getDefault()));
                 locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
             } while (c.moveToNext());
+            c.close();
         }
         if (!locationToUpdate.keySet().isEmpty()) {
             debug("Found " + locationToUpdate.size() + " locations for update");
@@ -94,15 +97,12 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
     @Override
     protected void onProgressUpdate(Void... values) {
         super.onProgressUpdate(values);
-        if (context instanceof Activity) {
+        if (context instanceof FragmentActivity) {
             SwipeRefreshLayout swipeRefreshLayout = ((SwipeRefreshLayout) ((Activity) context).findViewById(R.id.refresh_layout));
             if (swipeRefreshLayout != null) {
                 swipeRefreshLayout.setRefreshing(false);
             }
-            if (adapter != null) {
-                debug("changing cursor for swipeRefreshLayout");
-                adapter.changeCursor(new Dao(context).getAllLocations());
-            }
+            ((FragmentActivity) context).getSupportLoaderManager().getLoader(MainActivity.GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
         }
     }
 }

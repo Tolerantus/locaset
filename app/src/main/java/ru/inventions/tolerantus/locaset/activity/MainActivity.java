@@ -4,7 +4,10 @@ import android.Manifest;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -21,12 +24,15 @@ import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
 import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.db.GetAllLocationsCursorLoader;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.db.LocationCursorAdapter;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.*;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, LoaderManager.LoaderCallbacks<Cursor> {
+
+    public final static int GET_ALL_LOCATIONS_LOADER_ID = 1;
 
     private ListView lv;
     private Dao dao;
@@ -41,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         dao = new Dao(this);
         lv = (ListView) findViewById(R.id.lvMain);
-        adapter = new LocationCursorAdapter(this, dao.getAllLocations(), CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
+        adapter = new LocationCursorAdapter(this, null, CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
         lv.setAdapter(adapter);
         registerForContextMenu(lv);
         findViewById(R.id.bt_add).setOnClickListener(this);
@@ -55,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 1);
+        getSupportLoaderManager().initLoader(GET_ALL_LOCATIONS_LOADER_ID, null, this);
     }
 
     private void refresh() {
@@ -93,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         item.setIcon(android.R.drawable.ic_media_play);
                     }
                 } else {
+                    debug("app doesn't have permission for managing notification policies, starting activity to fix this.");
                     Intent intent = new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
                     startActivity(intent);
                 }
@@ -115,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (item.getItemId()) {
             case R.id.itemDelete:
                 dao.deleteLocationById(acmi.id);
-                adapter.changeCursor(dao.getAllLocations());
+                getSupportLoaderManager().getLoader(GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
                 break;
             case R.id.itemCustomize:
                 startCustomizingLocation(acmi.id);
@@ -143,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
-        adapter.changeCursor(dao.getAllLocations());
+        getSupportLoaderManager().getLoader(GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
     }
 
     @Override
@@ -167,4 +175,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
         finishAffinity();
     }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        debug("creating loader");
+        return new GetAllLocationsCursorLoader(this, dao);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        debug("loader finished his work");
+        adapter.changeCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {}
 }
