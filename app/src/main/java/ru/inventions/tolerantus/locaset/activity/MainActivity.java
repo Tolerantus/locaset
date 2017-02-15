@@ -1,6 +1,8 @@
 package ru.inventions.tolerantus.locaset.activity;
 
 import android.Manifest;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.CursorAdapter;
@@ -14,12 +16,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
-
-
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.concurrent.ExecutionException;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
@@ -86,14 +82,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.main_opt_service:
-                if (!MyGPSService.isServiceOnline()) {
-                    Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
-                    startService(new Intent(this, MyGPSService.class));
-                    item.setIcon(android.R.drawable.ic_media_pause);
+                if (isNotificationPolicyAccessGranted()) {
+                    if (!MyGPSService.isServiceOnline()) {
+                        Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
+                        startService(new Intent(this, MyGPSService.class));
+                        item.setIcon(android.R.drawable.ic_media_pause);
+                    } else {
+                        Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
+                        stopService(new Intent(this, MyGPSService.class));
+                        item.setIcon(android.R.drawable.ic_media_play);
+                    }
                 } else {
-                    Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
-                    stopService(new Intent(this, MyGPSService.class));
-                    item.setIcon(android.R.drawable.ic_media_play);
+                    Intent intent = new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                    startActivity(intent);
                 }
                 break;
             case R.id.refresh:
@@ -101,6 +102,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
         return true;
+    }
+
+    private boolean isNotificationPolicyAccessGranted() {
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        return mNotificationManager.isNotificationPolicyAccessGranted();
     }
 
     @Override
