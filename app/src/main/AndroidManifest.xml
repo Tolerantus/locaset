@@ -39,6 +39,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity android:name=".activity.GlobalPreferencesActivity">
+            <intent-filter>
+                <action android:name="ru.tolerantus.inventions.GLOBAL_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <service android:name=".service.MyGPSService" />
 

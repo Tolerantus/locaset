@@ -6,7 +6,7 @@
     <string name="ringtone_volume_column">ringtoneVolume</string>
     <string name="longitude_column">longitude</string>
     <string name="latitude_column">latitude</string>
-    <string name="customize_context_item">Customize</string>
+    <string name="customize_context_item">Check map</string>
     <string name="delete_location_context_item">Delete location</string>
     <string name="stop_service">Stop search service</string>
     <string name="altitude_column">altitude</string>
@@ -92,4 +92,9 @@
     <string name="vibration">vibration</string>
     <string name="radius">radius</string>
     <string name="address">address</string>
+    <string name="details">Details</string>
+    <string-array name="drawer_items">
+        <item>Settings</item>
+    </string-array>
+
 </resources>

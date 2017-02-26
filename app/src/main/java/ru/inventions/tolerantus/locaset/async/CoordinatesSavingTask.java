@@ -11,11 +11,24 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+import com.j256.ormlite.misc.TransactionManager;
+
+import org.json.JSONObject;
+
+import java.sql.SQLException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import ru.inventions.tolerantus.locaset.R;
-import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.db.Location;
+import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 import ru.inventions.tolerantus.locaset.util.NetworkUtils;
 import ru.inventions.tolerantus.locaset.util.ParsingUtils;
@@ -31,17 +44,15 @@ public class CoordinatesSavingTask extends AsyncTask<Void, Double, Void> {
 
     private final static String REQUEST = "http://maps.googleapis.com/maps/api/elevation/xml?locations=%1$s,%2$s&sensor=true";
 
-    private long locationId;
+    private Location location;
     private boolean markerChanged;
     private Activity activityInvoker;
     private Intent afterSavingIntent;
-    private ContentValues contentForSaving;
 
-    public CoordinatesSavingTask(Activity activityInvoker, Intent afterSavingIntent, long locationId, ContentValues contentForSaving, boolean changed) {
+    public CoordinatesSavingTask(Activity activityInvoker, Intent afterSavingIntent, Location location, boolean changed) {
         this.activityInvoker = activityInvoker;
         this.afterSavingIntent = afterSavingIntent;
-        this.locationId = locationId;
-        this.contentForSaving = contentForSaving;
+        this.location = location;
         this.markerChanged = changed;
     }
 
@@ -59,60 +70,62 @@ public class CoordinatesSavingTask extends AsyncTask<Void, Double, Void> {
             makeElevationRequest();
         } else {
             error("network hasn't been found, skipping elevation request");
-            putReceivedDataInCv(0);
+            location.setAltitude(0);
         }
         return null;
-    }
-
-    @Override
-    protected void onProgressUpdate(Double... values) {
-        super.onProgressUpdate(values);
-        new Dao(activityInvoker).updateLocation(locationId, contentForSaving);
-        if (MyMediaService.currentPreferenceId.get() == locationId) {
-            MyMediaService.currentPreferenceId.set(-1);
-        }
-        if (afterSavingIntent != null) {
-            activityInvoker.startActivity(afterSavingIntent);
-        }
     }
 
     @Override
     protected void onPostExecute(Void aVoid) {
         debug("CoordinatesSavingTask finished her work");
         activityInvoker.findViewById(R.id.pb_loading).setVisibility(View.INVISIBLE);
+        final OrmDbOpenHelper ormDbOpenHelper = OpenHelperManager.getHelper(activityInvoker, OrmDbOpenHelper.class);
+        try {
+            TransactionManager.callInTransaction(ormDbOpenHelper.getConnectionSource(), new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    debug("coordinates saving transaction started");
+                    ormDbOpenHelper.getDao().update(location);
+                    debug("coordinates saving transaction finished");
+                    return null;
+                }
+            });
+            debug("location with id=" + location.getId() + " has been saved");
+        } catch (SQLException e) {
+            error("error during updating location: " + e.getMessage());
+        }
+        if (MyMediaService.currentPreferenceId.get() == location.getId()) {
+            MyMediaService.currentPreferenceId.set(-1);
+        }
+        if (afterSavingIntent != null) {
+            activityInvoker.startActivity(afterSavingIntent);
+            debug("starting activity " + afterSavingIntent.getAction());
+        }
         super.onPostExecute(aVoid);
     }
 
     private void makeElevationRequest() {
         RequestQueue queue = Volley.newRequestQueue(activityInvoker);
-        Double latitude = contentForSaving.getAsDouble(activityInvoker.getString(R.string.latitude_column));
-        Double longitude = contentForSaving.getAsDouble(activityInvoker.getString(R.string.longitude_column));
+        RequestFuture requestFuture = RequestFuture.newFuture();
+        Double latitude = location.getLatitude();
+        Double longitude = location.getLongitude();
         if (latitude != null && longitude != null) {
             String url = String.format(REQUEST, latitude, longitude);
             debug("sending elevation request:\n" + url);
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            debug("Response was received, starting parsing");
-                            double alt = ParsingUtils.parseXmlResponseElevation(response, activityInvoker);
-                            debug("computed altitude=" + alt);
-                            putReceivedDataInCv(alt);
-                        }
-                    }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    error("Error occurred during elevation calculation! ");
-                    putReceivedDataInCv(0);
-                }
-            });
+                    requestFuture, requestFuture);
             queue.add(stringRequest);
+            try {
+                String rawResponse = requestFuture.get(5, TimeUnit.SECONDS).toString();
+                debug("Response has been received, starting parsing");
+                double alt = ParsingUtils.parseXmlResponseElevation(rawResponse, activityInvoker);
+                debug("computed altitude=" + alt);
+                location.setAltitude(alt);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                error("requesting elevation failed: " + e.getMessage());
+                error("Error occurred during elevation calculation! ");
+                location.setAltitude(0);
+            }
         }
-    }
-
-    private void putReceivedDataInCv(double alt) {
-        contentForSaving.put(activityInvoker.getString(R.string.altitude_column), alt);
-        contentForSaving.put(activityInvoker.getString(R.string.address), "");
-        publishProgress();
     }
 }

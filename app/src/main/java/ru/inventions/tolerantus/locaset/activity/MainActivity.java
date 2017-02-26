@@ -4,11 +4,8 @@ import android.Manifest;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
-import android.support.v4.widget.CursorAdapter;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -17,56 +14,80 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+
 import ru.inventions.tolerantus.locaset.R;
-import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
-import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
-import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.db.GetAllLocationsCursorLoader;
+import ru.inventions.tolerantus.locaset.adapter.LocationsListAdapter;
+import ru.inventions.tolerantus.locaset.async.LocationUpdateTask;
+import ru.inventions.tolerantus.locaset.async.ThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.db.Location;
+import ru.inventions.tolerantus.locaset.db.LocationFabric;
+import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
-import ru.inventions.tolerantus.locaset.db.LocationCursorAdapter;
+import ru.inventions.tolerantus.locaset.util.LocationActionEnum;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.*;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, LoaderManager.LoaderCallbacks<Cursor> {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, AdapterView.OnItemClickListener {
 
-    public final static int GET_ALL_LOCATIONS_LOADER_ID = 1;
-
-    private ListView lv;
-    private Dao dao;
-    private LocationCursorAdapter adapter;
-    private SwipeRefreshLayout refreshLayout;
+    private LocationsListAdapter adapter;
+    private DrawerLayout drawer;
+    private ListView drawerList;
+    private OrmDbOpenHelper ormDbOpenHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         debug("creating main activity");
-
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        dao = new Dao(this);
-        lv = (ListView) findViewById(R.id.lvMain);
-        adapter = new LocationCursorAdapter(this, null, CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
-        lv.setAdapter(adapter);
-        registerForContextMenu(lv);
+
+        {
+            drawer = ((DrawerLayout) findViewById(R.id.drawer_layout));
+            drawerList = ((ListView) findViewById(R.id.left_drawer));
+            drawerList.setAdapter(new ArrayAdapter<>(this,
+                    android.R.layout.simple_list_item_1,
+                    getResources().getStringArray(R.array.drawer_items))
+            );
+            drawerList.setOnItemClickListener(this);
+        }
+
+        {
+            ormDbOpenHelper = OpenHelperManager.getHelper(this, OrmDbOpenHelper.class);
+            ListView lv = (ListView) findViewById(R.id.lvMain);
+            adapter = new LocationsListAdapter(this, new ArrayList<Location>());
+            lv.setAdapter(adapter);
+            registerForContextMenu(lv);
+        }
+
         findViewById(R.id.bt_add).setOnClickListener(this);
-        refreshLayout = ((SwipeRefreshLayout) findViewById(R.id.refresh_layout));
-        refreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                refresh();
-            }
-        });
+
+        {
+            SwipeRefreshLayout refreshLayout = ((SwipeRefreshLayout) findViewById(R.id.refresh_layout));
+            refreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+                @Override
+                public void onRefresh() {
+                    refreshList();
+                }
+            });
+        }
+
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 1);
-        getSupportLoaderManager().initLoader(GET_ALL_LOCATIONS_LOADER_ID, null, this);
     }
 
-    private void refresh() {
-        AddressRefreshTask refreshTask = new AddressRefreshTask(MainActivity.this, adapter);
-        refreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+    private void refreshList() {
+        SwipeRefreshLayout refreshLayout = ((SwipeRefreshLayout) findViewById(R.id.refresh_layout));
+        refreshLayout.setRefreshing(true);
+        LocationUpdateTask task = new LocationUpdateTask(null, LocationActionEnum.UPDATE, this, null, adapter);
+        task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
     }
 
     @Override
@@ -92,21 +113,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (isNotificationPolicyAccessGranted()) {
                     if (!MyGPSService.isServiceOnline()) {
                         Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
+                        MyGPSService.startUpService();
                         startService(new Intent(this, MyGPSService.class));
                         item.setIcon(android.R.drawable.ic_media_pause);
                     } else {
                         Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
+                        MyGPSService.shutdownService();
                         stopService(new Intent(this, MyGPSService.class));
                         item.setIcon(android.R.drawable.ic_media_play);
                     }
+                    adapter.notifyDataSetInvalidated();
                 } else {
                     debug("app doesn't have permission for managing notification policies, starting activity to fix this.");
                     Intent intent = new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
                     startActivity(intent);
                 }
-                break;
-            case R.id.refresh:
-                refresh();
                 break;
         }
         return true;
@@ -122,19 +143,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         AdapterView.AdapterContextMenuInfo acmi = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
         switch (item.getItemId()) {
             case R.id.itemDelete:
-                dao.deleteLocationById(acmi.id);
-                getSupportLoaderManager().getLoader(GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
+                LocationUpdateTask task = new LocationUpdateTask(adapter.getItem(acmi.position), LocationActionEnum.DELETE, this, null, adapter);
+                task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
                 break;
             case R.id.itemCustomize:
-                startCustomizingLocation(acmi.id);
+                checkMap(acmi.id);
+                break;
+            case R.id.itemDetails:
+                checkDetails(acmi.id);
                 break;
         }
         return super.onContextItemSelected(item);
     }
 
-    private void startCustomizingLocation(long id) {
+    private void checkMap(long id) {
         debug("preparing location customizing activity for location id=" + id);
         Intent settingsIntent = new Intent(this, MapActivity.class);
+        settingsIntent.putExtra(getString(R.string.location_id), id);
+        startActivity(settingsIntent);
+    }
+
+    private void checkDetails(long id) {
+        debug("preparing location customizing activity for location id=" + id);
+        Intent settingsIntent = new Intent(this, DetailedSettingsActivity.class);
         settingsIntent.putExtra(getString(R.string.location_id), id);
         startActivity(settingsIntent);
     }
@@ -150,8 +181,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     @Override
     protected void onResume() {
+        refreshList();
         super.onResume();
-        getSupportLoaderManager().getLoader(GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
     }
 
     @Override
@@ -163,31 +194,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void addNewLocation() {
-        long id = dao.createLocation("New location", 60, 30, 0);
-        debug("added location with id=" + id);
-        if (id != -1) {
-            startCustomizingLocation(id);
+        try {
+            Location newLocation = LocationFabric.createLocation();
+            ormDbOpenHelper.getDao().create(newLocation);
+            long id = newLocation.getId();
+            debug("added location with id=" + id);
+            if (id != -1) {
+                checkMap(id);
+            }
+        } catch (SQLException e) {
+            error("error during location creation: " + e.getMessage());
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (ormDbOpenHelper != null) {
+            OpenHelperManager.releaseHelper();
+            ormDbOpenHelper = null;
+        }
         finishAffinity();
     }
 
     @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        debug("creating loader");
-        return new GetAllLocationsCursorLoader(this, dao);
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        drawerList.setItemChecked(position, true);
+        drawer.closeDrawer(drawerList);
+        switch (position) {
+            case 0:
+                Intent globalPreferences = new Intent(this, GlobalPreferencesActivity.class);
+                startActivity(globalPreferences);
+                break;
+        }
     }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        debug("loader finished his work");
-        adapter.changeCursor(data);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {}
 }

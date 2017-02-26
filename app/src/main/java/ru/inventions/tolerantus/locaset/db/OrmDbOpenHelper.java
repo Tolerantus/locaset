@@ -18,13 +18,13 @@ import ru.inventions.tolerantus.locaset.R;
 
 public class OrmDbOpenHelper extends OrmLiteSqliteOpenHelper {
 
-    private static final String DATABASE_NAME = "todo";
+    private static final String DATABASE_NAME = "locaset_db";
     private static final int DATABASE_VERSION = 1;
 
     /**
      * The data access object used to interact with the Sqlite database to do C.R.U.D operations.
      */
-    private Dao<Location, Long> todoDao;
+    private Dao<Location, Long> locationDao;
 
     public OrmDbOpenHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION,
@@ -32,7 +32,7 @@ public class OrmDbOpenHelper extends OrmLiteSqliteOpenHelper {
                  * R.raw.ormlite_config is a reference to the ormlite_config.txt file in the
                  * /res/raw/ directory of this project
                  * */
-                0);
+                R.raw.ormlite_config);
     }
 
     @Override
@@ -65,9 +65,9 @@ public class OrmDbOpenHelper extends OrmLiteSqliteOpenHelper {
      * @throws SQLException
      */
     public Dao<Location, Long> getDao() throws SQLException {
-        if(todoDao == null) {
-            todoDao = getDao(Location.class);
+        if(locationDao == null) {
+            locationDao = getDao(Location.class);
         }
-        return todoDao;
+        return locationDao;
     }
 }

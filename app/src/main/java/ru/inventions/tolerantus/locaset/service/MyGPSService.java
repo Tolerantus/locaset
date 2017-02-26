@@ -1,15 +1,18 @@
 package ru.inventions.tolerantus.locaset.service;
 
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
-import android.util.Log;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 
+import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.activity.MainActivity;
 import ru.inventions.tolerantus.locaset.async.GpsLookupTask;
-import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.async.ThreadPoolProvider;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
 
@@ -22,6 +25,7 @@ public class MyGPSService extends Service {
     private GoogleApiClient googleApiClient;
     private GpsLookupTask task;
 
+
     @Override
     public void onCreate() {
         debug("creating MyGPSService");
@@ -30,15 +34,24 @@ public class MyGPSService extends Service {
                     .addApi(LocationServices.API)
                     .build();
         }
+        Intent mainPageIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, mainPageIntent, 0);
+        Notification.Builder builder = new Notification.Builder(this)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Locaset")
+                .setContentText("Searching...")
+                .setContentIntent(pendingIntent);
+        Notification notification = builder.build();
+        startForeground(777, notification);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!isOnline) {
-            switchOnService();
+        if (task == null) {
+            startUpService();
             debug("starting MyGPSService");
             task = new GpsLookupTask(MyGPSService.this);
-            task.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+            task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
         }
         // If we get killed, after returning from here, restart
         return START_NOT_STICKY;
@@ -55,6 +68,7 @@ public class MyGPSService extends Service {
     public void onDestroy() {
         debug("destroying MyGPSService");
         shutdownService();
+        stopForeground(true);
         if (task != null) {
             task.cancel(false);
         }
@@ -68,7 +82,7 @@ public class MyGPSService extends Service {
         isOnline = false;
     }
 
-    public static void switchOnService() {
+    public static void startUpService() {
         isOnline = true;
     }
 

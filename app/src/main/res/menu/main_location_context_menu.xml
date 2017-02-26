@@ -3,5 +3,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item android:title="@string/customize_context_item" android:id="@+id/itemCustomize" />
+    <item android:title="@string/details" android:id="@+id/itemDetails" />
     <item android:title="@string/delete_location_context_item" android:id="@+id/itemDelete" />
 </menu>

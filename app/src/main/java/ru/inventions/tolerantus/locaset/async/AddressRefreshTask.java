@@ -2,24 +2,24 @@ package ru.inventions.tolerantus.locaset.async;
 
 import android.app.Activity;
 import android.content.Context;
-import android.database.Cursor;
 import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.util.Log;
-import android.widget.CursorAdapter;
 
-import java.util.HashMap;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.misc.TransactionManager;
+
+import java.sql.SQLException;
 import java.util.Locale;
-import java.util.Map;
+import java.util.concurrent.Callable;
 
 import ru.inventions.tolerantus.locaset.R;
-import ru.inventions.tolerantus.locaset.activity.MainActivity;
-import ru.inventions.tolerantus.locaset.db.Dao;
+import ru.inventions.tolerantus.locaset.adapter.LocationsListAdapter;
+import ru.inventions.tolerantus.locaset.db.Location;
+import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
 import ru.inventions.tolerantus.locaset.util.AddressUtils;
-import ru.inventions.tolerantus.locaset.util.CvBuilder;
-import ru.inventions.tolerantus.locaset.util.LogUtils;
 import ru.inventions.tolerantus.locaset.util.NetworkUtils;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
@@ -31,15 +31,16 @@ import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
 
 public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
 
-    private static final String tag = "AddressRefreshTask";
-
     private Context context;
 
-    private CursorAdapter adapter;
+    private LocationsListAdapter adapter;
 
-    public AddressRefreshTask(Context context, CursorAdapter adapter) {
+    private OrmDbOpenHelper ormDbOpenHelper;
+
+    public AddressRefreshTask(Context context, LocationsListAdapter adapter) {
         this.context = context;
         this.adapter = adapter;
+        ormDbOpenHelper = OpenHelperManager.getHelper(context, OrmDbOpenHelper.class);
     }
 
     /**
@@ -64,23 +65,23 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
             return null;
         }
         debug("Starting address refreshing task");
-        Dao dao = new Dao(context);
-        Map<Long, String> locationToUpdate = new HashMap<>();
-        Cursor c = dao.getAllLocations();
-        if (c.moveToFirst()) {
-            do {
-                double latitude = c.getDouble(c.getColumnIndex(context.getString(R.string.latitude_column)));
-                double longitude = c.getDouble(c.getColumnIndex(context.getString(R.string.longitude_column)));
-                String refreshedAddress = AddressUtils.getStringAddress(latitude, longitude, new Geocoder(context, Locale.getDefault()));
-                locationToUpdate.put(c.getLong(c.getColumnIndex("_id")), refreshedAddress);
-            } while (c.moveToNext());
-            c.close();
-        }
-        if (!locationToUpdate.keySet().isEmpty()) {
-            debug("Found " + locationToUpdate.size() + " locations for update");
-        }
-        for (Long id : locationToUpdate.keySet()) {
-            dao.updateLocation(id, CvBuilder.create().append(context.getString(R.string.address), locationToUpdate.get(id)).get());
+        try {
+            TransactionManager.callInTransaction(ormDbOpenHelper.getConnectionSource(), new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    debug("address refreshing transaction started");
+                    Dao<Location, Long> dao = ormDbOpenHelper.getDao();
+                    for (Location location : dao.queryForAll()) {
+                        String refreshedAddress = AddressUtils.getStringAddress(location.getLatitude(), location.getLongitude(), new Geocoder(context, Locale.getDefault()));
+                        location.setAddress(refreshedAddress);
+                        dao.update(location);
+                    }
+                    debug("address refreshing transaction finished");
+                    return null;
+                }
+            });
+        } catch (SQLException e) {
+            error("error during updating address information:" + e.getMessage());
         }
         publishProgress();
         return null;
@@ -102,7 +103,19 @@ public class AddressRefreshTask extends AsyncTask<Void, Void, Void> {
             if (swipeRefreshLayout != null) {
                 swipeRefreshLayout.setRefreshing(false);
             }
-            ((FragmentActivity) context).getSupportLoaderManager().getLoader(MainActivity.GET_ALL_LOCATIONS_LOADER_ID).forceLoad();
+            if (adapter != null) {
+                adapter.getLocations().clear();
+                try {
+                    adapter.getLocations().addAll(ormDbOpenHelper.getDao().queryForAll());
+                } catch (SQLException e) {
+                    error("reading locations failed: " + e.getMessage());
+                }
+                adapter.notifyDataSetChanged();
+            }
+        }
+        if (ormDbOpenHelper != null) {
+            OpenHelperManager.releaseHelper();
+            ormDbOpenHelper = null;
         }
     }
 }

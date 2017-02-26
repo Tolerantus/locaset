@@ -17,4 +17,12 @@ public class LogUtils {
     public static void debug(String debugMessage) {
         Log.d(tag, debugMessage);
     }
+
+    public static void warn(String warningMessage) {
+        Log.w(tag, warningMessage);
+    }
+
+    public static void info(String infoMessage) {
+        Log.i(tag, infoMessage);
+    }
 }

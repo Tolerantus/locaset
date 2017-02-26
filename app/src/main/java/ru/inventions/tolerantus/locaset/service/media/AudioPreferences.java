@@ -7,6 +7,7 @@ package ru.inventions.tolerantus.locaset.service.media;
 public class AudioPreferences {
 
     private long preferenceId;
+    private String locationName;
     private double ringtoneVolume;
     private double musicVolume;
     private double notificationVolume;
@@ -54,10 +55,19 @@ public class AudioPreferences {
         this.vibro = vibro;
     }
 
+    public String getLocationName() {
+        return locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
+    }
+
     @Override
     public String toString() {
         return "AudioPreferences{" +
-                "preferenceId=" + preferenceId +
+                "locationName='" + locationName + '\'' +
+                ", preferenceId=" + preferenceId +
                 ", ringtoneVolume=" + ringtoneVolume +
                 ", musicVolume=" + musicVolume +
                 ", notificationVolume=" + notificationVolume +

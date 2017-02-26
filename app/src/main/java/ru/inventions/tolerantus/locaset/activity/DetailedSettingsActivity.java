@@ -2,34 +2,33 @@ package ru.inventions.tolerantus.locaset.activity;
 
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
-import android.location.Geocoder;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Switch;
+import android.widget.TabHost;
 import android.widget.Toast;
 
-import java.util.Locale;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+
+import java.sql.SQLException;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
 import ru.inventions.tolerantus.locaset.async.CoordinatesSavingTask;
-import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
-import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
-import ru.inventions.tolerantus.locaset.util.AddressUtils;
-import ru.inventions.tolerantus.locaset.util.CvBuilder;
+import ru.inventions.tolerantus.locaset.async.LocationUpdateTask;
+import ru.inventions.tolerantus.locaset.async.ThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.db.Location;
+import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
+import ru.inventions.tolerantus.locaset.util.LocationActionEnum;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
+import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
 
 /**
  * Created by Aleksandr on 23.01.2017.
@@ -54,23 +53,43 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
     private int notifMax;
     private Switch sVibro;
 
+    private Location location;
+
     private Long locationId;
 
-    private Dao dao;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_audio_settings);
-        dao = new Dao(this);
 
         initViews();
 
         Intent startIntent = getIntent();
         locationId = startIntent.getLongExtra("locationId", -1);
+
         if (locationId != -1) {
+            initTabs();
             initViewsContent();
         }
+    }
+
+    private void initTabs() {
+        TabHost tabHost = (TabHost) findViewById(R.id.tabhost);
+        tabHost.setup();
+        TabHost.TabSpec tabSpec;
+
+        tabSpec = tabHost.newTabSpec("Coordinates");
+        tabSpec.setIndicator("Coordinates");
+        // указываем id компонента из FrameLayout, он и станет содержимым
+        tabSpec.setContent(R.id.scroll_geo_settings);
+        tabHost.addTab(tabSpec);
+
+        tabSpec = tabHost.newTabSpec("Audio");
+        tabSpec.setIndicator("Audio");
+        // указываем id компонента из FrameLayout, он и станет содержимым
+        tabSpec.setContent(R.id.audio_settings);
+        tabHost.addTab(tabSpec);
     }
 
     private void initViews() {
@@ -98,58 +117,49 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
     }
 
     private void initViewsContent() {
-        Cursor locationData = dao.getLocationById(locationId);
-        if (locationData.moveToFirst()) {
-            etLocationName.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.location_name_column))));
-            etLatitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.latitude_column))));
-            etLongitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.longitude_column))));
-            etAltitude.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.altitude_column))));
+        OrmDbOpenHelper ormDbOpenHelper = OpenHelperManager.getHelper(this, OrmDbOpenHelper.class);
+        try {
+            Location location = ormDbOpenHelper.getDao().queryForId(locationId);
+            this.location = location;
+            etLocationName.setText(location.getName());
+            etLatitude.setText(Double.toString(location.getLatitude()));
+            etLongitude.setText(Double.toString(location.getLongitude()));
+            etAltitude.setText(Double.toString(location.getAltitude()));
             initialLatitude = etLatitude.getText().toString();
             initialLongitude = etLongitude.getText().toString();
-            etRadius.setText(locationData.getString(locationData.getColumnIndex(getString(R.string.radius))));
+            etRadius.setText(Double.toString(location.getRadius()));
 
-            sbRingtone.setProgress(((int) (ringMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.ringtone_volume_column))))));
-            sbNotification.setProgress(((int) (notifMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.notification_volume))))));
-            sbMusic.setProgress(((int) (musicMax * locationData.getFloat(locationData.getColumnIndex(getString(R.string.music_volume))))));
+            sbRingtone.setProgress(((int) (ringMax * location.getRingtoneVol())));
+            sbNotification.setProgress(((int) (notifMax * location.getNotificationVol())));
+            sbMusic.setProgress(((int) (musicMax * location.getMusicVol())));
 
             if (sbRingtone.getProgress() > 0) {
                 sVibro.setChecked(true);
                 sVibro.setEnabled(false);
             } else {
-                sVibro.setChecked(locationData.getInt(locationData.getColumnIndex(getString(R.string.vibration))) != 0);
+                sVibro.setChecked(location.isVibro());
             }
+        } catch (SQLException e) {
+            error("error during location reading:" + e.getMessage());
         }
     }
 
     private void save() {
-        String locationName = etLocationName.getText().toString();
-        Double latitude = Double.parseDouble(etLatitude.getText().toString());
-        Double radius = Double.parseDouble(etRadius.getText().toString());
-        Double longitude = Double.parseDouble(etLongitude.getText().toString());
-        Double altitude = Double.parseDouble(etAltitude.getText().toString());
-        Double ringtoneVolume = sbRingtone.getProgress() * 1.0 / ringMax;
-        Double musicVolume = sbMusic.getProgress() * 1.0 / musicMax;
-        Double notificationVolume = sbNotification.getProgress() * 1.0 / notifMax;
-        boolean vibro = sVibro.isChecked();
-        CvBuilder cvBuilder = CvBuilder.create()
-                .append(getString(R.string.location_name_column), locationName)
-                .append(getString(R.string.radius), radius.intValue())
-                .append(getString(R.string.latitude_column), latitude)
-                .append(getString(R.string.longitude_column), longitude)
-                .append(getString(R.string.altitude_column), altitude)
-                .append(getString(R.string.ringtone_volume_column), ringtoneVolume)
-                .append(getString(R.string.music_volume), musicVolume)
-                .append(getString(R.string.notification_volume), notificationVolume)
-                .append(getString(R.string.vibration), vibro ? 1 : 0);
+        location.setName(etLocationName.getText().toString());
+        location.setLatitude(Double.parseDouble(etLatitude.getText().toString()));
+        location.setRadius(Double.parseDouble(etRadius.getText().toString()));
+        location.setLongitude(Double.parseDouble(etLongitude.getText().toString()));
+        location.setAltitude(Double.parseDouble(etAltitude.getText().toString()));
+        location.setRingtoneVol(sbRingtone.getProgress() * 1f / ringMax);
+        location.setMusicVol(sbMusic.getProgress() * 1f / musicMax);
+        location.setNotificationVol(sbNotification.getProgress() * 1f / notifMax);
+        location.setVibro(sVibro.isChecked());
 
-        CoordinatesSavingTask savingTask = new CoordinatesSavingTask(this, null, locationId, cvBuilder.get(), isMarkerMoved());
-        savingTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
-
-        AddressRefreshTask addressRefreshTask = new AddressRefreshTask(this, null);
-        addressRefreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+        LocationUpdateTask task = new LocationUpdateTask(location, LocationActionEnum.UPDATE, this, null, null);
+        task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
 
         debug("Saving location");
-        Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Saving location", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -192,15 +202,9 @@ public class DetailedSettingsActivity extends AppCompatActivity implements SeekB
         return !initialLatitude.equals(etLatitude.getText().toString()) || !initialLongitude.equals(etLongitude.getText().toString());
     }
 
-    private boolean isAddressInitialized(long id) {
-        Cursor c = dao.getLocationById(id);
-        if (c.moveToFirst()) {
-            String address = c.getString(c.getColumnIndex(getString(R.string.address)));
-            if (address == null || address.isEmpty()) {
-                return false;
-            }
-        }
-        return true;
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 }
 

@@ -1,17 +1,14 @@
 package ru.inventions.tolerantus.locaset.activity;
 
 import android.Manifest;
-import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,13 +30,17 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+
+import java.sql.SQLException;
 
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.async.AddressRefreshTask;
 import ru.inventions.tolerantus.locaset.async.CoordinatesSavingTask;
-import ru.inventions.tolerantus.locaset.db.Dao;
-import ru.inventions.tolerantus.locaset.async.MyCachedThreadPoolProvider;
-import ru.inventions.tolerantus.locaset.util.CvBuilder;
+import ru.inventions.tolerantus.locaset.async.LocationUpdateTask;
+import ru.inventions.tolerantus.locaset.async.ThreadPoolProvider;
+import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
+import ru.inventions.tolerantus.locaset.util.LocationActionEnum;
 import ru.inventions.tolerantus.locaset.util.Validator;
 
 import static ru.inventions.tolerantus.locaset.util.LogUtils.debug;
@@ -52,7 +53,6 @@ import static ru.inventions.tolerantus.locaset.util.LogUtils.error;
 public class MapActivity extends AppCompatActivity implements View.OnClickListener, OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener {
     private SupportMapFragment mapFragment;
     private GoogleMap map;
-    private Dao dao;
     private Validator validator;
     private float latitude;
     private float longitude;
@@ -64,6 +64,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     private LocationRequest mLocationRequest;
     private String locationName;
     private Long locationId;
+    private OrmDbOpenHelper ormDbOpenHelper;
+    private ru.inventions.tolerantus.locaset.db.Location location;
 
     private boolean locationChanged;
 
@@ -79,14 +81,11 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         if (locationId == -1) {
             throw new IllegalArgumentException("Incorrect location id value!!!");
         }
-        ContentValues cv = CvBuilder.create()
-                .append(getString(R.string.latitude_column), marker.getPosition().latitude)
-                .append(getString(R.string.longitude_column), marker.getPosition().longitude)
-                .get();
-        CoordinatesSavingTask coordinatesSavingTask = new CoordinatesSavingTask(this, afterSavingIntent, locationId, cv, locationChanged);
-        coordinatesSavingTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
-        AddressRefreshTask addressRefreshTask = new AddressRefreshTask(this, null);
-        addressRefreshTask.executeOnExecutor(MyCachedThreadPoolProvider.getInstance());
+        location.setLatitude(marker.getPosition().latitude);
+        location.setLongitude(marker.getPosition().longitude);
+
+        LocationUpdateTask task = new LocationUpdateTask(location, LocationActionEnum.UPDATE, this, afterSavingIntent, null);
+        task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
     }
 
     @Override
@@ -122,8 +121,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ormDbOpenHelper = OpenHelperManager.getHelper(this, OrmDbOpenHelper.class);
         setContentView(R.layout.activity_location_review);
-        dao = new Dao(this);
         validator = new Validator();
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -146,14 +145,16 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     }
 
     private void readDataFromDB(long locationId) {
-        if (locationId != -1) {
-            Cursor c = dao.getLocationById(locationId);
-            if (c.moveToFirst()) {
-                locationName = c.getString(c.getColumnIndex(getString(R.string.location_name_column)));
-                latitude = c.getFloat(c.getColumnIndex(getString(R.string.latitude_column)));
-                longitude = c.getFloat(c.getColumnIndex(getString(R.string.longitude_column)));
-                radius = c.getInt(c.getColumnIndex(getString(R.string.radius)));
+        try {
+            if (locationId != -1) {
+                location = ormDbOpenHelper.getDao().queryForId(locationId);
+                locationName = location.getName();
+                latitude = ((float) location.getLatitude());
+                longitude = ((float) location.getLongitude());
+                radius = ((int) location.getRadius());
             }
+        } catch (SQLException e) {
+            error("error during quering location with id=" + locationId + ", " + e.getMessage());
         }
     }
 
@@ -240,7 +241,6 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     }
 
 
-
     private void updateLastKnownLocation() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -280,6 +280,10 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     protected void onDestroy() {
         googleApiClient.disconnect();
+        if (ormDbOpenHelper != null) {
+            OpenHelperManager.releaseHelper();
+            ormDbOpenHelper = null;
+        }
         super.onDestroy();
     }
 
