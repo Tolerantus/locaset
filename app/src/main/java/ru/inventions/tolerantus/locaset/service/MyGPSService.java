@@ -53,8 +53,7 @@ public class MyGPSService extends Service {
             task = new GpsLookupTask(MyGPSService.this);
             task.executeOnExecutor(ThreadPoolProvider.getCachedInstance());
         }
-        // If we get killed, after returning from here, restart
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     @Override
