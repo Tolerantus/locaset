@@ -13,9 +13,16 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TabHost;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import ru.inventions.tolerantus.locaset.R;
+import ru.inventions.tolerantus.locaset.service.MyAlarmService;
+import ru.inventions.tolerantus.locaset.service.Receiver;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 
 /**
@@ -36,6 +43,7 @@ public class GlobalPreferencesActivity extends AppCompatActivity implements Seek
 
     private EditText etGpsLookupCycle;
     private Switch sNotifications;
+    private Switch sStickyNotifications;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,6 +64,11 @@ public class GlobalPreferencesActivity extends AppCompatActivity implements Seek
         tabSpec.setContent(R.id.tab_main_options);
         tabHost.addTab(tabSpec);
 
+        tabSpec = tabHost.newTabSpec("Technical");
+        tabSpec.setIndicator("Technical");
+        tabSpec.setContent(R.id.tab_stats);
+        tabHost.addTab(tabSpec);
+
         sbRingtone = ((SeekBar) findViewById(R.id.sb_ringtone));
         sbMusic = ((SeekBar) findViewById(R.id.sb_music));
         sbNotification = ((SeekBar) findViewById(R.id.sb_notification));
@@ -63,6 +76,7 @@ public class GlobalPreferencesActivity extends AppCompatActivity implements Seek
 
         etGpsLookupCycle = ((EditText) findViewById(R.id.et_gps_check_time));
         sNotifications = ((Switch) findViewById(R.id.sNotifications));
+        sStickyNotifications = ((Switch) findViewById(R.id.sStickyNotofications));
 
         AudioManager audioManager = ((AudioManager) getSystemService(Context.AUDIO_SERVICE));
         ringMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING);
@@ -92,6 +106,14 @@ public class GlobalPreferencesActivity extends AppCompatActivity implements Seek
 
         etGpsLookupCycle.setText(Integer.toString(globalPrefs.getInt("gps_lookup_cycle", 60)));
         sNotifications.setChecked(globalPrefs.getBoolean("notifications", true));
+        sStickyNotifications.setChecked(globalPrefs.getBoolean("sticky_notifications", false));
+
+        ((TextView) findViewById(R.id.tv_calls)).setText("" + Receiver.numberOfCalls);
+        Date lastExecutionDate = Receiver.lastExecutionDate;
+        if (lastExecutionDate != null) {
+            ((TextView) findViewById(R.id.tv_last_execution_date)).setText(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(lastExecutionDate));
+        }
+        ((TextView) findViewById(R.id.tv_lastDeterminedAddress)).setText("" + Receiver.lastDeterminedAddress);
     }
 
     @Override
@@ -124,6 +146,7 @@ public class GlobalPreferencesActivity extends AppCompatActivity implements Seek
                 0 : Integer.parseInt(etGpsLookupCycle.getText().toString());
         editor.putInt("gps_lookup_cycle", gpsCycle);
         editor.putBoolean("notifications", sNotifications.isChecked());
+        editor.putBoolean("sticky_notifications", sStickyNotifications.isChecked());
         editor.commit();
         if (MyMediaService.currentPreferenceId.get() == -1) {
             MyMediaService.isCurrentPreferenceValid.set(false);

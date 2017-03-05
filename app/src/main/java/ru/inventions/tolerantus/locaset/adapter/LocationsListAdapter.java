@@ -13,6 +13,7 @@ import java.util.List;
 import es.claucookie.miniequalizerlibrary.EqualizerView;
 import ru.inventions.tolerantus.locaset.R;
 import ru.inventions.tolerantus.locaset.db.Location;
+import ru.inventions.tolerantus.locaset.service.MyAlarmService;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 
@@ -72,7 +73,7 @@ public class LocationsListAdapter extends BaseAdapter {
             if (address != null && !address.isEmpty()) {
                 ((TextView) view.findViewById(R.id.address)).setText(location.getAddress());
             }
-            if (MyMediaService.currentPreferenceId.get() == location.getId() && MyGPSService.isServiceOnline()) {
+            if (MyMediaService.currentPreferenceId.get() == location.getId() && MyAlarmService.isAlarmSet) {
                 equalizer.animateBars();
                 equalizer.setVisibility(View.VISIBLE);
             } else {

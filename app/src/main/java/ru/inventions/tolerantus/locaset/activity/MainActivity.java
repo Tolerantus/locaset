@@ -4,7 +4,9 @@ import android.Manifest;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -30,6 +32,7 @@ import ru.inventions.tolerantus.locaset.async.ThreadPoolProvider;
 import ru.inventions.tolerantus.locaset.db.Location;
 import ru.inventions.tolerantus.locaset.db.LocationFabric;
 import ru.inventions.tolerantus.locaset.db.OrmDbOpenHelper;
+import ru.inventions.tolerantus.locaset.service.MyAlarmService;
 import ru.inventions.tolerantus.locaset.service.MyGPSService;
 import ru.inventions.tolerantus.locaset.util.LocationActionEnum;
 
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private DrawerLayout drawer;
     private ListView drawerList;
     private OrmDbOpenHelper ormDbOpenHelper;
+    private MyAlarmService _alarmService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             registerForContextMenu(lv);
         }
 
+        _alarmService = new MyAlarmService(this);
+
         findViewById(R.id.bt_add).setOnClickListener(this);
 
         {
@@ -78,9 +84,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             });
         }
 
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
-                1);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    1);
+        }
     }
 
     private void refreshList() {
@@ -98,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_options_menu, menu);
-        if (MyGPSService.isServiceOnline()) {
+        if (MyAlarmService.isAlarmSet) {
             menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_pause);
         } else {
             menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_play);
@@ -111,15 +120,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (item.getItemId()) {
             case R.id.main_opt_service:
                 if (isNotificationPolicyAccessGranted()) {
-                    if (!MyGPSService.isServiceOnline()) {
+                    if (!MyAlarmService.isAlarmSet) {
                         Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
-                        MyGPSService.startUpService();
-                        startService(new Intent(this, MyGPSService.class));
+                        _alarmService.replanAlarms();
                         item.setIcon(android.R.drawable.ic_media_pause);
                     } else {
                         Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
-                        MyGPSService.shutdownService();
-                        stopService(new Intent(this, MyGPSService.class));
+                        _alarmService.cancel();
                         item.setIcon(android.R.drawable.ic_media_play);
                     }
                     adapter.notifyDataSetInvalidated();
