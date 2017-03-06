@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import ru.inventions.tolerantus.locaset.service.media.MyMediaService;
 import ru.inventions.tolerantus.locaset.util.Loggable;
 
 import static ru.inventions.tolerantus.locaset.service.ReceiverActionEnum.CANCEL;
@@ -43,7 +44,8 @@ public class MyAlarmService  extends Loggable{
         SharedPreferences preferences = _context.getSharedPreferences("global", Context.MODE_PRIVATE);
         int minutes = preferences.getInt("gps_lookup_cycle", 10);
         debug("replanning alarms with " + minutes + " minutes cycle");
-        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, System.currentTimeMillis(), getPI(PLAN));
+//        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, System.currentTimeMillis(), getPI(PLAN));
+        alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(System.currentTimeMillis(), getPI(PLAN)), getPI(PLAN));
     }
 
     public void cancel() {
@@ -51,6 +53,7 @@ public class MyAlarmService  extends Loggable{
         alarmManager.cancel(getPI(PLAN));
         alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, System.currentTimeMillis(), getPI(CANCEL));
         MyNotificationManager.cancelAllNotifications(_context);
+        MyMediaService.isCurrentPreferenceValid.set(false);
     }
 
     private PendingIntent getPI(ReceiverActionEnum action) {
@@ -67,7 +70,9 @@ public class MyAlarmService  extends Loggable{
         }
     }
 
-
+    public boolean isAnyAlarmPlanned() {
+        return alarmManager.getNextAlarmClock() != null;
+    }
 
 
 }

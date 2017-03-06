@@ -107,11 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_options_menu, menu);
-        if (MyAlarmService.isAlarmSet) {
-            menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_pause);
-        } else {
-            menu.findItem(R.id.main_opt_service).setIcon(android.R.drawable.ic_media_play);
-        }
+        renderActionPanel(menu.findItem(R.id.main_opt_service));
         return true;
     }
 
@@ -121,14 +117,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.main_opt_service:
                 if (isNotificationPolicyAccessGranted()) {
                     if (!MyAlarmService.isAlarmSet) {
-                        Toast.makeText(this, "Starting service", Toast.LENGTH_SHORT).show();
                         _alarmService.replanAlarms();
-                        item.setIcon(android.R.drawable.ic_media_pause);
                     } else {
-                        Toast.makeText(this, "Stopping service", Toast.LENGTH_SHORT).show();
                         _alarmService.cancel();
-                        item.setIcon(android.R.drawable.ic_media_play);
                     }
+                    renderActionPanel(item);
                     adapter.notifyDataSetInvalidated();
                 } else {
                     debug("app doesn't have permission for managing notification policies, starting activity to fix this.");
@@ -138,6 +131,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
         return true;
+    }
+
+    private void renderActionPanel(MenuItem item) {
+        if (_alarmService.isAnyAlarmPlanned()) {
+            item.setIcon(android.R.drawable.ic_media_pause);
+        } else {
+            item.setIcon(android.R.drawable.ic_media_play);
+        }
     }
 
     private boolean isNotificationPolicyAccessGranted() {

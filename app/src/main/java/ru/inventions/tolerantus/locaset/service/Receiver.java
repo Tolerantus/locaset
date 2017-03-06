@@ -180,7 +180,7 @@ public class Receiver extends BroadcastReceiver implements LocationListener, Goo
         } else {
             SharedPreferences preferences = _context.getSharedPreferences("global", MODE_PRIVATE);
             p.setPreferenceId(-1);
-            p.setLocationName("Somewhere in open space...");
+            p.setLocationName("Somewhere in the open space...");
             p.setRingtoneVolume(preferences.getFloat("ringtone", 0));
             p.setMusicVolume(preferences.getFloat("music", 0));
             p.setNotificationVolume(preferences.getFloat("notification", 0));
@@ -199,7 +199,7 @@ public class Receiver extends BroadcastReceiver implements LocationListener, Goo
         Intent intent = new Intent(_context, Receiver.class);
         intent.setAction(PLAN.toString());
         PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, REQUEST_CODE, intent, 0);
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC, System.currentTimeMillis() + minutes * 60 * 1000, pendingIntent);
+        alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(System.currentTimeMillis() + minutes * 60 * 1000, pendingIntent), pendingIntent);
     }
 
     private void terminateServices() {

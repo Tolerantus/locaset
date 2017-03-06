@@ -267,13 +267,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             debug("Location changed, applying changes");
-            lastKnownLocation = LocationServices.FusedLocationApi.getLastLocation(
-                    googleApiClient);
-            if (lastKnownLocation != null) {
-                debug(lastKnownLocation.toString());
-            } else {
-                debug("Last known location hasn't been initialized yet");
-            }
+            lastKnownLocation = location;
         }
     }
 
